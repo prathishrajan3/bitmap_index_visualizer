@@ -312,101 +312,103 @@ export default function LaboratoryDashboard() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* Left Sidebar: Controls */}
-        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/30 p-6 flex flex-col gap-6 overflow-y-auto shrink-0 custom-scrollbar">
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Settings2 className="w-4 h-4" /> Global Settings
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm mb-1 text-neutral-300 flex justify-between">
-                  <span>Row Count</span>
-                  <span className="text-blue-400 font-mono">{rowCount}</span>
-                </label>
-                <input 
-                  type="range" min="5" max="10000" step="5" value={rowCount} 
-                  onChange={(e) => setRowCount(Number(e.target.value))}
-                  className="w-full accent-blue-500"
-                />
-              </div>
+        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/30 flex flex-col shrink-0">
+          <div className="flex-1 min-h-0 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Global Settings
+              </h2>
               
-              <div>
-                <label className="block text-sm mb-1 text-neutral-300 flex justify-between">
-                  <span>Random Seed</span>
-                  <span className="text-amber-400 font-mono">{seed}</span>
-                </label>
-                <div className="flex gap-2">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm mb-1 text-neutral-300 flex justify-between">
+                    <span>Row Count</span>
+                    <span className="text-blue-400 font-mono">{rowCount}</span>
+                  </label>
                   <input 
-                    type="number" value={seed} 
-                    onChange={(e) => setSeed(Number(e.target.value))}
-                    className="flex-1 bg-neutral-950 border border-neutral-800 rounded p-1.5 text-xs outline-none focus:border-blue-500 font-mono"
+                    type="range" min="5" max="10000" step="5" value={rowCount} 
+                    onChange={(e) => setRowCount(Number(e.target.value))}
+                    className="w-full accent-blue-500"
                   />
-                  <button onClick={() => setSeed(Math.floor(Math.random()*10000))} className="p-1.5 bg-neutral-800 rounded hover:bg-neutral-700"><Shuffle className="w-4 h-4"/></button>
                 </div>
-              </div>
-            </div>
-          </div>
-          
-          <hr className="border-neutral-800" />
-
-          <div>
-            <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Database className="w-4 h-4" /> Column Definitions
-            </h2>
-            <div className="space-y-4">
-              {schema.columns.map(col => (
-                <div key={col.name} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2 relative group">
-                  <button 
-                    onClick={() => removeColumnDef(col.name)}
-                    className="absolute top-2 right-2 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Remove column"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <input 
-                    type="text"
-                    value={col.name}
-                    onChange={e => updateColumnDef(col.name, { name: e.target.value })}
-                    className="font-medium text-blue-300 text-sm bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-blue-500 outline-none w-5/6 transition-colors"
-                  />
-                  
-                  <div className="flex gap-2 text-xs">
-                    <div className="flex-1">
-                      <label className="text-neutral-500 block mb-1">Cardinality</label>
-                      <input 
-                        type="number" min="1" max="1000" value={col.cardinality}
-                        onChange={e => updateColumnDef(col.name, { cardinality: Number(e.target.value) })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-neutral-500 block mb-1">Distribution</label>
-                      <select 
-                        value={col.distribution}
-                        onChange={e => updateColumnDef(col.name, { distribution: e.target.value as any })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
-                      >
-                        <option>Uniform</option>
-                        <option>Cyclic</option>
-                        <option>Random</option>
-                        <option>Skewed</option>
-                        <option>Zipf</option>
-                      </select>
-                    </div>
+                
+                <div>
+                  <label className="block text-sm mb-1 text-neutral-300 flex justify-between">
+                    <span>Random Seed</span>
+                    <span className="text-amber-400 font-mono">{seed}</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="number" value={seed} 
+                      onChange={(e) => setSeed(Number(e.target.value))}
+                      className="flex-1 bg-neutral-950 border border-neutral-800 rounded p-1.5 text-xs outline-none focus:border-blue-500 font-mono"
+                    />
+                    <button onClick={() => setSeed(Math.floor(Math.random()*10000))} className="p-1.5 bg-neutral-800 rounded hover:bg-neutral-700"><Shuffle className="w-4 h-4"/></button>
                   </div>
                 </div>
-              ))}
-              <button 
-                onClick={addColumnDef}
-                className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3 h-3" /> Add Column
-              </button>
+              </div>
+            </div>
+            
+            <hr className="border-neutral-800 shrink-0" />
+
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Database className="w-4 h-4" /> Column Definitions
+              </h2>
+              <div className="space-y-4">
+                {schema.columns.map(col => (
+                  <div key={col.name} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2 relative group">
+                    <button 
+                      onClick={() => removeColumnDef(col.name)}
+                      className="absolute top-2 right-2 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove column"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <input 
+                      type="text"
+                      value={col.name}
+                      onChange={e => updateColumnDef(col.name, { name: e.target.value })}
+                      className="font-medium text-blue-300 text-sm bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-blue-500 outline-none w-5/6 transition-colors"
+                    />
+                    
+                    <div className="flex gap-2 text-xs">
+                      <div className="flex-1">
+                        <label className="text-neutral-500 block mb-1">Cardinality</label>
+                        <input 
+                          type="number" min="1" max="1000" value={col.cardinality}
+                          onChange={e => updateColumnDef(col.name, { cardinality: Number(e.target.value) })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-neutral-500 block mb-1">Distribution</label>
+                        <select 
+                          value={col.distribution}
+                          onChange={e => updateColumnDef(col.name, { distribution: e.target.value as any })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
+                        >
+                          <option>Uniform</option>
+                          <option>Cyclic</option>
+                          <option>Random</option>
+                          <option>Skewed</option>
+                          <option>Zipf</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button 
+                  onClick={addColumnDef}
+                  className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Add Column
+                </button>
+              </div>
             </div>
           </div>
           
-          <div className="flex flex-col gap-2 mt-auto pt-4">
+          <div className="p-6 pt-4 border-t border-neutral-800 flex flex-col gap-2 shrink-0 bg-neutral-900/30">
             <button 
               onClick={handleAiGenerateDataset}
               disabled={isAiGenerating}
@@ -645,7 +647,7 @@ export default function LaboratoryDashboard() {
             <Sparkles className="w-4 h-4 text-amber-400" /> AI Tutor
           </h2>
           
-          <div className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-sm leading-relaxed text-neutral-300 relative overflow-y-auto whitespace-pre-wrap">
+          <div className="flex-1 min-h-0 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-sm leading-relaxed text-neutral-300 relative overflow-y-auto whitespace-pre-wrap custom-scrollbar">
             {aiLoading ? (
               <div className="flex items-center gap-2 text-amber-500/70">
                 <span className="animate-pulse">Analyzing context...</span>
@@ -658,7 +660,7 @@ export default function LaboratoryDashboard() {
           <button 
             onClick={askAi}
             disabled={aiLoading}
-            className="mt-4 w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            className="mt-4 shrink-0 w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4" /> Explain This
           </button>
