@@ -304,6 +304,9 @@ export default function LaboratoryDashboard() {
           <button onClick={() => setGlossaryOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 border border-blue-900/50 text-sm transition-colors">
             <BookOpen className="w-4 h-4" /> Glossary
           </button>
+          <button onClick={() => setActiveTab('BTree')} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-sm transition-colors border border-blue-600/50">
+            <Blocks className="w-4 h-4" /> B-Tree Lab
+          </button>
           <button onClick={() => setCompareModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
             <GitCompare className="w-4 h-4" /> Compare
           </button>
@@ -462,7 +465,6 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
             <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
             <TabBtn icon={<Search className="w-4 h-4 shrink-0"/>} label="Query Plan" active={activeTab==='QueryPlan'} onClick={() => setActiveTab('QueryPlan')} />
-            <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="B-Tree Lab" active={activeTab==='BTree'} onClick={() => setActiveTab('BTree')} />
           </div>
 
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
