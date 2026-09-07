@@ -529,13 +529,10 @@ export default function LaboratoryDashboard() {
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {allBitmaps.length > 0 ? (
                     <div className="space-y-8 pb-10">
-                      {schema.columns
-                        .map(col => allBitmaps.find(b => b.sourceColumn === col.name))
-                        .filter(Boolean)
-                        .map((bmp, i) => (
+                      {allBitmaps.map((bmp, i) => (
                           <div key={i} className="border-b border-neutral-800 pb-8 last:border-0">
-                            <h3 className="text-md font-semibold text-neutral-400 mb-4">Building vector for: {bmp!.sourceColumn} = {String(bmp!.sourceValue)}</h3>
-                            <BitmapBuilder dataset={dataset} bitmap={bmp!} />
+                            <h3 className="text-md font-semibold text-neutral-400 mb-4">Building vector for: {bmp.sourceColumn} = {String(bmp.sourceValue)}</h3>
+                            <BitmapBuilder dataset={dataset} bitmap={bmp} />
                           </div>
                         ))
                       }

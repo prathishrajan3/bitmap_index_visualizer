@@ -9,7 +9,7 @@ interface BitmapBuilderProps {
 
 export function BitmapBuilder({ dataset, bitmap }: BitmapBuilderProps) {
   const [step, setStep] = useState<number>(0);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
   
   const totalSteps = bitmap.length; // One step per row
 
