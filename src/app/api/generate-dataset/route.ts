@@ -18,6 +18,17 @@ export async function POST(req: Request) {
 
     const schemaDesc = schema ? schema.map((c: any) => `- '${c.name}': cardinality ~${c.cardinality}, distribution ${c.distribution}`).join('\n') : '';
 
+    const exampleObj: any = { id: "1" };
+    if (schema) {
+      schema.forEach((c: any) => {
+        exampleObj[c.name] = "Value1";
+      });
+    } else {
+      exampleObj["Column1"] = "ValueA";
+    }
+
+    const exampleJson = JSON.stringify([exampleObj, { "...": "..." }], null, 2);
+
     const prompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing.
 Please generate realistic, human-readable data (e.g. names of actual departments, realistic years, 'Yes'/'No', etc) instead of random alphanumeric strings.
 
@@ -26,11 +37,8 @@ ${schemaDesc}
 
 For each column, try to respect the requested cardinality (number of unique values) and the statistical distribution as best as you can conceptually. Include an "id" column starting from 1.
 
-Return ONLY valid JSON in the following format (an array of objects):
-[
-  { "id": "1", "Column1": "ValueA", "Column2": "ValueB" },
-  ...
-]
+Return ONLY valid JSON in the following format (an array of objects). The keys of each object MUST exactly match the schema defined above:
+${exampleJson}
 Do not wrap it in markdown blockquotes (\`\`\`json). Return exactly the JSON array.`;
 
     const response = await openai.chat.completions.create({

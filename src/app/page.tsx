@@ -462,10 +462,21 @@ export default function LaboratoryDashboard() {
             )}
 
             {activeTab === 'Builder' && (
-              <div className="h-full">
+              <div className="h-full space-y-8">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Blocks className="w-5 h-5 text-blue-400"/> Bitmap Construction Visualizer</h2>
-                {allBitmaps.length > 0 ? (
-                  <BitmapBuilder dataset={dataset} bitmap={allBitmaps[0]} />
+                {schema.columns.map(col => allBitmaps.find(b => b.sourceColumn === col.name)).filter(Boolean).length > 0 ? (
+                  <div className="space-y-8 pb-10">
+                    {schema.columns
+                      .map(col => allBitmaps.find(b => b.sourceColumn === col.name))
+                      .filter(Boolean)
+                      .map((bmp, i) => (
+                        <div key={i} className="border-b border-neutral-800 pb-8 last:border-0">
+                          <h3 className="text-md font-semibold text-neutral-400 mb-4">Building vector for: {bmp!.sourceColumn} = {String(bmp!.sourceValue)}</h3>
+                          <BitmapBuilder dataset={dataset} bitmap={bmp!} />
+                        </div>
+                      ))
+                    }
+                  </div>
                 ) : (
                   <div className="text-neutral-500">Generate a dataset first.</div>
                 )}
