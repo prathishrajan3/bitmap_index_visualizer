@@ -49,7 +49,8 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
         {moduleList.map((mod, idx) => (
           <div 
             key={mod.id} 
-            className={`flex flex-col border p-6 rounded-lg transition-all duration-300
+            onClick={() => handleStartModule(mod.id)}
+            className={`flex flex-col border p-6 rounded-lg transition-all duration-300 cursor-pointer hover:border-blue-500/50
               ${mod.completed ? 'bg-emerald-900/10 border-emerald-900/50' : 'bg-neutral-900 border-neutral-800'}
               ${currentModuleId === mod.id ? 'ring-2 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : ''}
             `}
@@ -74,12 +75,9 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
                 <span className="text-xs text-neutral-500">Not Started</span>
               )}
 
-              <button 
-                onClick={() => handleStartModule(mod.id)}
-                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              >
+              <div className="flex items-center gap-1 text-sm text-blue-400">
                 {mod.completed ? 'Review' : 'Start'} <ArrowRight className="w-4 h-4" />
-              </button>
+              </div>
             </div>
           </div>
         ))}

@@ -237,6 +237,7 @@ export default function LaboratoryDashboard() {
           onClick={() => {
             completeModule(moduleId, 100);
             setExplanation(`Excellent! You have mastered the ${mod.title} module.`);
+            setActiveTab('Journey');
           }}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full flex items-center gap-2 font-bold transition-transform hover:scale-105 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
         >

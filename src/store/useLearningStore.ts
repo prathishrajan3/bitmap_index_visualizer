@@ -67,7 +67,7 @@ export const useLearningStore = create<LearningState>()(
       }
     }),
     {
-      name: 'bitmap-learning-progress', // localStorage key
+      name: 'bitmap-learning-progress-v2', // localStorage key
       storage: createJSONStorage(() => localStorage),
     }
   )
