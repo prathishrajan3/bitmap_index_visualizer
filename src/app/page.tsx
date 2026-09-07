@@ -104,7 +104,7 @@ export default function LaboratoryDashboard() {
       const res = await fetch('/api/generate-dataset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowCount })
+        body: JSON.stringify({ rowCount, schema: schema.columns })
       });
       const data = await res.json();
       if (data.error) {

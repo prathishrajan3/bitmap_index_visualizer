@@ -13,19 +13,22 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { rowCount } = await req.json();
+    const { rowCount, schema } = await req.json();
     const rows = Math.min(Math.max(10, rowCount || 10), 100); // Limit to 100 rows for AI generation to save tokens/time
 
-    const prompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing. 
-Include columns that demonstrate varying cardinalities, such as:
-- 'Gender' (Low cardinality)
-- 'Department' or 'Role' (Medium cardinality)
-- 'Active' (Boolean)
-- 'AccessLevel' (Low cardinality e.g. 1, 2, 3)
+    const schemaDesc = schema ? schema.map((c: any) => `- '${c.name}': cardinality ~${c.cardinality}, distribution ${c.distribution}`).join('\n') : '';
+
+    const prompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing.
+Please generate realistic, human-readable data (e.g. names of actual departments, realistic years, 'Yes'/'No', etc) instead of random alphanumeric strings.
+
+The dataset MUST strictly follow this exact schema:
+${schemaDesc}
+
+For each column, try to respect the requested cardinality (number of unique values) and the statistical distribution as best as you can conceptually. Include an "id" column starting from 1.
 
 Return ONLY valid JSON in the following format (an array of objects):
 [
-  { "id": 1, "Department": "HR", "Gender": "M", "Active": "True", "AccessLevel": "1" },
+  { "id": "1", "Column1": "ValueA", "Column2": "ValueB" },
   ...
 ]
 Do not wrap it in markdown blockquotes (\`\`\`json). Return exactly the JSON array.`;
