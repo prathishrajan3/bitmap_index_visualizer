@@ -34,7 +34,13 @@ export async function POST(req: Request) {
 
       const jsonPayload = JSON.stringify(lowercaseDataset);
       
-      const columnDefs = schema.map((c: any) => `${c.name.toLowerCase()} text`).join(', ');
+      const getPgType = (jsType: string) => {
+        if (jsType === 'number') return 'int';
+        if (jsType === 'boolean') return 'boolean';
+        return 'text';
+      };
+      
+      const columnDefs = schema.map((c: any) => `${c.name.toLowerCase()} ${getPgType(c.type)}`).join(', ');
       
       finalQuery = `
         WITH DatasetRow AS (
