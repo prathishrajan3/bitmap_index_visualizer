@@ -95,7 +95,32 @@ export default function LaboratoryDashboard() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleReport = () => {
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+
+  const handleAiGenerateDataset = async () => {
+    setIsAiGenerating(true);
+    setExplanation("Asking AI to generate a pedagogically perfect dataset...");
+    try {
+      const res = await fetch('/api/generate-dataset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowCount })
+      });
+      const data = await res.json();
+      if (data.error) {
+        setExplanation(`Error: ${data.error}`);
+      } else if (data.dataset) {
+        loadDataset(data.dataset);
+        setExplanation("AI successfully generated and loaded the dataset!");
+      }
+    } catch (e) {
+      setExplanation("Failed to contact the AI generator.");
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleGenerateData = () => {
     const reportData = {
       metadata: { rowCount: dataset.length, schema: schema.columns },
       dataset,
@@ -337,10 +362,17 @@ export default function LaboratoryDashboard() {
           
           <div className="flex flex-col gap-2 mt-auto pt-4">
             <button 
-              onClick={generateData}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors text-sm font-medium"
+              onClick={handleAiGenerateDataset}
+              disabled={isAiGenerating}
+              className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 hover:bg-emerald-600/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              Regenerate Data
+              <Sparkles className="w-4 h-4" /> {isAiGenerating ? 'Generating...' : 'Generate with AI'}
+            </button>
+            <button 
+              onClick={generateData}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2"
+            >
+              <Shuffle className="w-4 h-4" /> Regenerate Data
             </button>
             <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
             <button 
@@ -356,18 +388,18 @@ export default function LaboratoryDashboard() {
         <main className="flex-1 flex flex-col overflow-hidden bg-neutral-950">
           
           {/* Tab Bar */}
-          <div className="flex bg-neutral-900/50 border-b border-neutral-800 p-2 gap-2 overflow-x-auto shrink-0">
-            <TabBtn icon={<GraduationCap className="w-4 h-4"/>} label="Journey" active={activeTab==='Journey'} onClick={() => setActiveTab('Journey')} />
-            <div className="w-px bg-neutral-800 mx-2"></div>
-            <TabBtn icon={<Table2 className="w-4 h-4"/>} label="Dataset" active={activeTab==='Dataset'} onClick={() => setActiveTab('Dataset')} />
-            <TabBtn icon={<Blocks className="w-4 h-4"/>} label="Builder" active={activeTab==='Builder'} onClick={() => setActiveTab('Builder')} />
-            <TabBtn icon={<LayoutGrid className="w-4 h-4"/>} label="Matrix" active={activeTab==='Matrix'} onClick={() => setActiveTab('Matrix')} />
-            <TabBtn icon={<Calculator className="w-4 h-4"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
-            <TabBtn icon={<FileArchive className="w-4 h-4"/>} label="Compression" active={activeTab==='Compression'} onClick={() => setActiveTab('Compression')} />
-            <TabBtn icon={<Terminal className="w-4 h-4"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
-            <div className="w-px bg-neutral-800 mx-2"></div>
-            <TabBtn icon={<Search className="w-4 h-4"/>} label="Query Plan" active={activeTab==='QueryPlan'} onClick={() => setActiveTab('QueryPlan')} />
-            <TabBtn icon={<Blocks className="w-4 h-4"/>} label="B-Tree Lab" active={activeTab==='BTree'} onClick={() => setActiveTab('BTree')} />
+          <div className="flex bg-neutral-900/50 border-b border-neutral-800 p-2 gap-2 overflow-x-auto shrink-0 flex-nowrap custom-scrollbar">
+            <TabBtn icon={<GraduationCap className="w-4 h-4 shrink-0"/>} label="Journey" active={activeTab==='Journey'} onClick={() => setActiveTab('Journey')} />
+            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <TabBtn icon={<Table2 className="w-4 h-4 shrink-0"/>} label="Dataset" active={activeTab==='Dataset'} onClick={() => setActiveTab('Dataset')} />
+            <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="Builder" active={activeTab==='Builder'} onClick={() => setActiveTab('Builder')} />
+            <TabBtn icon={<LayoutGrid className="w-4 h-4 shrink-0"/>} label="Matrix" active={activeTab==='Matrix'} onClick={() => setActiveTab('Matrix')} />
+            <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
+            <TabBtn icon={<FileArchive className="w-4 h-4 shrink-0"/>} label="Compression" active={activeTab==='Compression'} onClick={() => setActiveTab('Compression')} />
+            <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
+            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <TabBtn icon={<Search className="w-4 h-4 shrink-0"/>} label="Query Plan" active={activeTab==='QueryPlan'} onClick={() => setActiveTab('QueryPlan')} />
+            <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="B-Tree Lab" active={activeTab==='BTree'} onClick={() => setActiveTab('BTree')} />
           </div>
 
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
@@ -573,7 +605,7 @@ function TabBtn({ icon, label, active, onClick }: { icon: React.ReactNode, label
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded text-sm transition-colors
+      className={`flex items-center gap-2 px-4 py-2 rounded text-sm transition-colors whitespace-nowrap
         ${active ? 'bg-neutral-800 text-white font-medium' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'}
       `}
     >
