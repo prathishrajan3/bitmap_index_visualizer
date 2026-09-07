@@ -45,7 +45,14 @@ export default function LaboratoryDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Generate Data automatically on mount and config change
+  const isInitialMount = useRef(true);
+  const skipNextGenerate = useRef(false);
+
   useEffect(() => {
+    if (skipNextGenerate.current) {
+      skipNextGenerate.current = false;
+      return;
+    }
     generateData();
     setExplanation(`Generated ${rowCount} rows using Seed ${seed}. The schema contains ${schema.columns.length} columns.`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,10 +91,15 @@ export default function LaboratoryDashboard() {
         return row;
       });
       
+      skipNextGenerate.current = true;
       useLaboratoryStore.setState({ 
         dataset: parsedData,
         bitmapIndex: buildDatasetBitmapIndex(parsedData, headers),
-        schema: { ...schema, columns: headers.map(h => ({ name: h, type: 'string', cardinality: 0, distribution: 'Uniform' }))}
+        schema: { ...schema, columns: headers.map(h => {
+          // Calculate true cardinality of the uploaded column
+          const distinctValues = new Set(parsedData.map(r => r[h]));
+          return { name: h, type: 'string', cardinality: distinctValues.size, distribution: 'Uniform' };
+        })}
       });
       setExplanation(`Successfully loaded ${parsedData.length} rows from CSV file!`);
     };
