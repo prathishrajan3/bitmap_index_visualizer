@@ -14,11 +14,12 @@ import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompressionLab } from '@/components/bitmap/CompressionLab';
 import { QueryPlanVisualizer } from '@/components/query/QueryPlanVisualizer';
 import { BTreeVisualizer } from '@/components/query/BTreeVisualizer';
+import { CompareLab } from '@/components/compare/CompareLab';
 import { LearningJourney } from '@/components/learning/LearningJourney';
 import { Glossary } from '@/components/learning/Glossary';
 import { BookOpen } from 'lucide-react';
 
-type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'QueryPlan' | 'BTree' | 'Journey';
+type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'QueryPlan' | 'BTree' | 'Journey' | 'Compare';
 
 
 
@@ -40,7 +41,6 @@ export default function LaboratoryDashboard() {
   const [sqlPrompt, setSqlPrompt] = useState<string>("");
   const [queryExecuting, setQueryExecuting] = useState(false);
   const [queryResultMsg, setQueryResultMsg] = useState<string>("");
-  const [compareModalOpen, setCompareModalOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -165,7 +165,10 @@ export default function LaboratoryDashboard() {
         body: JSON.stringify({ 
           config: { rowCount, columns: schema.columns },
           activeValue: activeValue?.val,
-          activeRow
+          activeRow,
+          activeTab,
+          sqlQuery,
+          compareMetrics: activeTab === 'Compare' ? require('@/lib/compareEngine').calculateMetrics(dataset, bitmapIndex, sqlQuery, schema.columns.length) : undefined
         })
       });
       const data = await res.json();
@@ -270,40 +273,7 @@ export default function LaboratoryDashboard() {
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans flex flex-col relative overflow-hidden">
       
-      {/* Compare Modal */}
-      <AnimatePresence>
-        {compareModalOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          >
-            <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-lg w-[400px]">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><GitCompare className="w-5 h-5 text-blue-400"/> Educational Compare Size</h3>
-              <p className="text-sm text-neutral-400 mb-4">
-                Conceptual comparison of memory footprint. (Not a real PostgreSQL physical calculation).
-              </p>
-              <div className="space-y-4">
-                <div className="bg-neutral-950 p-3 rounded">
-                  <div className="text-xs text-neutral-500 mb-1">Traditional Table Scan (Conceptual)</div>
-                  <div className="font-mono text-blue-400">{dataset.length * schema.columns.length * 8} bytes</div>
-                </div>
-                <div className="bg-neutral-950 p-3 rounded">
-                  <div className="text-xs text-neutral-500 mb-1">Total Bitmap Index Footprint</div>
-                  <div className="font-mono text-emerald-400">
-                    {allBitmaps.reduce((acc, bmp) => acc + Math.ceil(bmp.length / 8), 0)} bytes
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setCompareModalOpen(false)}
-                className="mt-6 w-full bg-neutral-800 hover:bg-neutral-700 py-2 rounded transition-colors text-sm"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Compare Modal Removed - now a Tab */}
 
       {/* Header */}
       <header className="border-b border-neutral-800 bg-neutral-900/50 p-4 flex items-center justify-between shrink-0">
@@ -320,9 +290,9 @@ export default function LaboratoryDashboard() {
           <button onClick={() => setActiveTab('BTree')} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-sm transition-colors border border-blue-600/50">
             <Blocks className="w-4 h-4" /> B-Tree Lab
           </button>
-          <button onClick={() => setCompareModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
-            <GitCompare className="w-4 h-4" /> Compare
-          </button>
+            <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
+              <GitCompare className="w-4 h-4" /> Compare
+            </button>
           <button onClick={handleReport} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
             <Download className="w-4 h-4" /> Report
           </button>
@@ -722,6 +692,15 @@ export default function LaboratoryDashboard() {
               <div className="h-full">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Blocks className="w-5 h-5 text-blue-400"/> Conceptual B-Tree Laboratory</h2>
                 <BTreeVisualizer />
+              </div>
+            )}
+
+            {activeTab === 'Compare' && (
+              <div className="h-full">
+                <CompareLab 
+                  sqlQuery={sqlQuery} 
+                  onNavigate={(tab) => setActiveTab(tab as Tab)} 
+                />
               </div>
             )}
             

@@ -15,19 +15,32 @@ export async function POST(req: Request) {
       });
     }
 
-    const { config, activeValue, activeRow } = await req.json();
+    const { config, activeValue, activeRow, activeTab, sqlQuery, compareMetrics } = await req.json();
 
     let context = `The student is experimenting with a Bitmap Index Simulation.\n`;
-    context += `Current Configuration: Row Count = ${config.rowCount}, Cardinality = ${config.cardinality}, Distribution = ${config.distribution}.\n`;
-
-    if (activeValue) {
-      context += `The student just clicked on the bitmap index for the value: '${activeValue}'. `;
-      context += `Explain how the bits for this specific value are set (1 if the row's value equals '${activeValue}', 0 otherwise) and how the density of this bitmap relates to the cardinality and distribution.`;
-    } else if (activeRow !== null) {
-      context += `The student just clicked on Row ID #${activeRow}. `;
-      context += `Explain how looking up a specific row affects the bitmap index, or how a database uses the row ID to find the actual record after evaluating a bitmap.`;
+    
+    if (activeTab === 'Compare' && compareMetrics) {
+      context += `The student is comparing a Table Scan vs Bitmap Index for the query: "${sqlQuery}".\n`;
+      context += `Metrics:\n`;
+      context += `- Total Rows: ${compareMetrics.totalRows}\n`;
+      context += `- Matching Rows: ${compareMetrics.matchingRows}\n`;
+      context += `- Selectivity: ${(compareMetrics.selectivity * 100).toFixed(1)}%\n`;
+      context += `- Table Scan Predicate Checks: ${compareMetrics.tableScanPredicateChecks}\n`;
+      context += `- Bitmap Fetches: ${compareMetrics.bitmapCandidateRows} rows\n`;
+      context += `- Bitmap Operations: ${compareMetrics.bitmapOperations} bitwise ops\n`;
+      context += `Explain why the bitmap index is (or isn't) efficient for this specific query based on these metrics. Discuss the selectivity. Keep it educational.`;
     } else {
-      context += `Explain the relationship between Cardinality (${config.cardinality}) and the resulting Bitmap Index density, especially given the ${config.distribution} distribution. Keep it educational and concise.`;
+      context += `Current Configuration: Row Count = ${config.rowCount}. Schema has ${config.columns?.length || 0} columns.\n`;
+
+      if (activeValue) {
+        context += `The student just clicked on the bitmap index for the value: '${activeValue}'. `;
+        context += `Explain how the bits for this specific value are set (1 if the row's value equals '${activeValue}', 0 otherwise) and how the density of this bitmap relates to the cardinality and distribution.`;
+      } else if (activeRow !== null) {
+        context += `The student just clicked on Row ID #${activeRow}. `;
+        context += `Explain how looking up a specific row affects the bitmap index, or how a database uses the row ID to find the actual record after evaluating a bitmap.`;
+      } else {
+        context += `Explain the relationship between Cardinality and the resulting Bitmap Index density. Keep it educational and concise.`;
+      }
     }
 
     const response = await openai.chat.completions.create({
