@@ -4,3 +4,4 @@ export * from './statistics';
 export * from './operations';
 export * from './generator';
 export * from './builder';
+export * from './compression';
