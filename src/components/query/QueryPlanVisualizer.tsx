@@ -79,10 +79,11 @@ export function QueryPlanVisualizer() {
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           fitView
+          colorMode="dark"
           className="bg-neutral-900/20"
         >
           <Background color="#334155" gap={16} size={1} />
-          <Controls className="bg-neutral-800 text-white border-neutral-700" />
+          <Controls />
           <Panel position="top-right" className="bg-blue-900/40 text-blue-300 p-2 rounded text-xs border border-blue-800">
             Click nodes to inspect execution
           </Panel>
