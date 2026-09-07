@@ -31,11 +31,11 @@ export async function POST(req: Request) {
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5.4-mini-2026-03-17',
       messages: [
         { 
           role: 'system', 
-          content: 'You are an expert Database Systems tutor. Explain bitmap index concepts clearly, concisely, and naturally. Do not use robotic phrases like "Certainly!" or "Here is an explanation". Just answer the question directly. Limit to 3 short paragraphs max.' 
+          content: 'You are an expert Database Systems tutor. You MUST strictly only answer questions related to bitmap indexing. If the user asks about anything else, politely decline and redirect them back to bitmap indexing. Explain bitmap index concepts clearly, concisely, and naturally. Do not use robotic phrases like "Certainly!" or "Here is an explanation". Just answer the question directly. Limit to 3 short paragraphs max.' 
         },
         { 
           role: 'user', 

@@ -17,3 +17,9 @@ model Experiment {
   query        String
   createdAt    DateTime @default(now())
 }
+
+model DatasetRow {
+  id        Int    @id @default(autoincrement())
+  value     String
+  // We can add more generic columns if we want, but 'value' maps to our bitmap engine
+}
