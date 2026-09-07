@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2 } from 'lucide-react';
+import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 import { useLearningStore } from '@/store/useLearningStore';
@@ -25,7 +25,8 @@ type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query
 export default function LaboratoryDashboard() {
   const { 
     rowCount, seed, schema, dataset, bitmapIndex, 
-    setRowCount, setSeed, updateColumnDef, generateData, loadExternalDataset 
+    setRowCount, setSeed, updateColumnDef, generateData, loadExternalDataset,
+    addColumnDef, removeColumnDef
   } = useLaboratoryStore();
   
   const { currentModuleId, completeModule, modules } = useLearningStore();
@@ -355,8 +356,20 @@ export default function LaboratoryDashboard() {
             </h2>
             <div className="space-y-4">
               {schema.columns.map(col => (
-                <div key={col.name} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2">
-                  <div className="font-medium text-blue-300 text-sm">{col.name}</div>
+                <div key={col.name} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2 relative group">
+                  <button 
+                    onClick={() => removeColumnDef(col.name)}
+                    className="absolute top-2 right-2 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Remove column"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <input 
+                    type="text"
+                    value={col.name}
+                    onChange={e => updateColumnDef(col.name, { name: e.target.value })}
+                    className="font-medium text-blue-300 text-sm bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-blue-500 outline-none w-5/6 transition-colors"
+                  />
                   
                   <div className="flex gap-2 text-xs">
                     <div className="flex-1">
@@ -384,6 +397,12 @@ export default function LaboratoryDashboard() {
                   </div>
                 </div>
               ))}
+              <button 
+                onClick={addColumnDef}
+                className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
+              >
+                <Plus className="w-3 h-3" /> Add Column
+              </button>
             </div>
           </div>
           

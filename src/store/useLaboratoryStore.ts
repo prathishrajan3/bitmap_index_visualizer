@@ -32,6 +32,8 @@ interface LaboratoryState {
   setRowCount: (count: number) => void;
   setSeed: (seed: number) => void;
   updateColumnDef: (colName: string, updates: Partial<ColumnDefinition>) => void;
+  addColumnDef: () => void;
+  removeColumnDef: (colName: string) => void;
   generateData: () => void;
   loadExternalDataset: (dataset: DatasetRow[]) => void;
 }
@@ -52,6 +54,23 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
       columns: state.schema.columns.map(col => 
         col.name === colName ? { ...col, ...updates } : col
       )
+    }
+  })),
+
+  addColumnDef: () => set((state) => {
+    const newName = `Column ${state.schema.columns.length + 1}`;
+    return {
+      schema: {
+        ...state.schema,
+        columns: [...state.schema.columns, { name: newName, type: 'string', cardinality: 5, distribution: 'Uniform' }]
+      }
+    };
+  }),
+
+  removeColumnDef: (colName) => set((state) => ({
+    schema: {
+      ...state.schema,
+      columns: state.schema.columns.filter(col => col.name !== colName)
     }
   })),
 
