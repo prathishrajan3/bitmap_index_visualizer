@@ -317,7 +317,7 @@ export default function LaboratoryDashboard() {
       </header>
 
       {/* Glossary Slideover */}
-      <Glossary isOpen={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
+      <Glossary isOpen={glossaryOpen} onClose={() => setGlossaryOpen(false)} onNavigateToTab={(tab: string) => setActiveTab(tab as any)} />
 
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
