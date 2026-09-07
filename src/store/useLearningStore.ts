@@ -63,7 +63,17 @@ export const useLearningStore = create<LearningState>()(
       },
 
       resetProgress: () => {
-        set({ modules: INITIAL_MODULES, currentModuleId: null, overallMastery: 0 });
+        set({
+          modules: {
+            'intro': { id: 'intro', title: 'Introduction to Indexes', completed: false, score: 0 },
+            'construction': { id: 'construction', title: 'Bitmap Construction', completed: false, score: 0 },
+            'algebra': { id: 'algebra', title: 'Bitmap Algebra', completed: false, score: 0 },
+            'compression': { id: 'compression', title: 'Data Compression', completed: false, score: 0 },
+            'execution': { id: 'execution', title: 'Query Execution', completed: false, score: 0 }
+          },
+          currentModuleId: null,
+          overallMastery: 0
+        });
       }
     }),
     {

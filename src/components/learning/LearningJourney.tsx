@@ -26,7 +26,7 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
   return (
     <div className="flex flex-col gap-8 h-full bg-neutral-950 p-6 rounded-lg border border-neutral-800">
       
-      {/* Top Mastery Dashboard */}
+      {/* Top Banner */}
       <div className="flex items-center justify-between bg-blue-900/10 border border-blue-900/30 p-6 rounded-lg">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-blue-600/20 rounded-full">
@@ -36,11 +36,6 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
             <h2 className="text-xl font-bold text-white">Your Learning Journey</h2>
             <p className="text-sm text-neutral-400">Complete modules to master Bitmap Indexing.</p>
           </div>
-        </div>
-        
-        <div className="text-right">
-          <div className="text-3xl font-bold text-white font-mono">{overallMastery}%</div>
-          <div className="text-xs text-blue-400 uppercase tracking-widest mt-1">Mastery Score</div>
         </div>
       </div>
 
@@ -70,9 +65,9 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
             
             <div className="mt-auto pt-6 flex justify-between items-center">
               {mod.completed ? (
-                <span className="text-xs text-emerald-500 font-mono">Score: {mod.score}%</span>
+                <span className="text-xs text-emerald-500 font-bold uppercase tracking-widest">Completed</span>
               ) : (
-                <span className="text-xs text-neutral-500">Not Started</span>
+                <span className="text-xs text-neutral-500 font-bold uppercase tracking-widest">Not Started</span>
               )}
 
               <div className="flex items-center gap-1 text-sm text-blue-400">
