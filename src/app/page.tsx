@@ -23,11 +23,7 @@ type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query
 
 
 export default function LaboratoryDashboard() {
-  const { 
-    rowCount, seed, schema, dataset, bitmapIndex, 
-    setRowCount, setSeed, updateColumnDef, generateData, loadExternalDataset,
-    addColumnDef, removeColumnDef
-  } = useLaboratoryStore();
+  const { dataset, schema, bitmapIndex, loadExternalDataset, generateData, updateColumnDef, addColumnDef, removeColumnDef, setRowCount, setSeed, seed, rowCount, buildAllIndexes } = useLaboratoryStore();
   
   const { currentModuleId, completeModule, modules } = useLearningStore();
   
@@ -100,6 +96,7 @@ export default function LaboratoryDashboard() {
   };
 
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiDatasetPrompt, setAiDatasetPrompt] = useState('');
 
   const handleAiGenerateDataset = async () => {
     setIsAiGenerating(true);
@@ -108,7 +105,7 @@ export default function LaboratoryDashboard() {
       const res = await fetch('/api/generate-dataset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowCount, schema: schema.columns })
+        body: JSON.stringify({ rowCount, schema: schema.columns, prompt: aiDatasetPrompt })
       });
       const data = await res.json();
       if (data.error) {
@@ -409,6 +406,13 @@ export default function LaboratoryDashboard() {
           </div>
           
           <div className="p-6 pt-4 border-t border-neutral-800 flex flex-col gap-2 shrink-0 bg-neutral-900/30">
+            <input 
+              type="text"
+              placeholder="Optional: custom context for AI..."
+              value={aiDatasetPrompt}
+              onChange={e => setAiDatasetPrompt(e.target.value)}
+              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-xs outline-none focus:border-emerald-500 transition-colors"
+            />
             <button 
               onClick={handleAiGenerateDataset}
               disabled={isAiGenerating}
@@ -509,7 +513,7 @@ export default function LaboratoryDashboard() {
               <div className="h-full space-y-8 flex flex-col">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Blocks className="w-5 h-5 text-blue-400"/> Bitmap Construction Visualizer</h2>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                  {schema.columns.map(col => allBitmaps.find(b => b.sourceColumn === col.name)).filter(Boolean).length > 0 ? (
+                  {allBitmaps.length > 0 ? (
                     <div className="space-y-8 pb-10">
                       {schema.columns
                         .map(col => allBitmaps.find(b => b.sourceColumn === col.name))
@@ -522,8 +526,23 @@ export default function LaboratoryDashboard() {
                         ))
                       }
                     </div>
+                  ) : dataset.length > 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-neutral-500 gap-4">
+                      <p>Dataset loaded. Ready to construct bitmap indexes.</p>
+                      <button 
+                        onClick={() => {
+                          buildAllIndexes();
+                          setExplanation("Indexes built! You can now visualize the construction below or proceed to the Matrix tab.");
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <Blocks className="w-4 h-4" /> Build All Bitmap Indexes
+                      </button>
+                    </div>
                   ) : (
-                    <div className="text-neutral-500">Generate a dataset first.</div>
+                    <div className="flex items-center justify-center h-64 text-neutral-500">
+                      <p>Generate or upload a dataset first to start building bitmap indexes.</p>
+                    </div>
                   )}
                 </div>
                 {renderMarkComplete('construction')}
@@ -533,17 +552,23 @@ export default function LaboratoryDashboard() {
             {activeTab === 'Matrix' && (
               <div className="h-full flex flex-col space-y-6">
                 <h2 className="text-lg font-bold mb-2 text-neutral-300 flex items-center gap-2"><LayoutGrid className="w-5 h-5 text-blue-400"/> Virtualized Bitmap Matrix</h2>
-                {allBitmaps.map((bmp, i) => (
-                  <BitmapMatrix 
-                    key={i} 
-                    bitmap={bmp} 
-                    activeRowId={activeRow}
-                    onBitClick={(id) => {
-                      setActiveRow(activeRow === id ? null : id);
-                      setActiveValue(activeValue?.col === bmp.sourceColumn && activeValue?.val === String(bmp.sourceValue) ? null : {col: bmp.sourceColumn, val: String(bmp.sourceValue)});
-                    }}
-                  />
-                ))}
+                {allBitmaps.length > 0 ? (
+                  allBitmaps.map((bmp, i) => (
+                    <BitmapMatrix 
+                      key={i} 
+                      bitmap={bmp} 
+                      activeRowId={activeRow}
+                      onBitClick={(id) => {
+                        setActiveRow(activeRow === id ? null : id);
+                        setActiveValue(activeValue?.col === bmp.sourceColumn && activeValue?.val === String(bmp.sourceValue) ? null : {col: bmp.sourceColumn, val: String(bmp.sourceValue)});
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
+                    <p>Please build the bitmap indexes in the Builder tab first.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -551,7 +576,13 @@ export default function LaboratoryDashboard() {
               <div className="h-full flex flex-col">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Calculator className="w-5 h-5 text-blue-400"/> Boolean Algebra Playground</h2>
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-                  <BitmapAlgebra availableBitmaps={allBitmaps} />
+                  {allBitmaps.length > 0 ? (
+                    <BitmapAlgebra availableBitmaps={allBitmaps} />
+                  ) : (
+                    <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
+                      <p>Please build the bitmap indexes in the Builder tab first.</p>
+                    </div>
+                  )}
                 </div>
                 {renderMarkComplete('algebra')}
               </div>
@@ -561,7 +592,13 @@ export default function LaboratoryDashboard() {
               <div className="h-full flex flex-col">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><FileArchive className="w-5 h-5 text-blue-400"/> Compression Laboratory</h2>
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-                  <CompressionLab availableBitmaps={allBitmaps} />
+                  {allBitmaps.length > 0 ? (
+                    <CompressionLab availableBitmaps={allBitmaps} />
+                  ) : (
+                    <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
+                      <p>Please build the bitmap indexes in the Builder tab first.</p>
+                    </div>
+                  )}
                 </div>
                 {renderMarkComplete('compression')}
               </div>

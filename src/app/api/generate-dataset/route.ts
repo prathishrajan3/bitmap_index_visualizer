@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { rowCount, schema } = await req.json();
+    const { rowCount, schema, prompt } = await req.json();
     const rows = Math.min(Math.max(10, rowCount || 10), 100); // Limit to 100 rows for AI generation to save tokens/time
 
     const schemaDesc = schema ? schema.map((c: any) => `- '${c.name}': cardinality ~${c.cardinality}, distribution ${c.distribution}`).join('\n') : '';
@@ -29,21 +29,25 @@ export async function POST(req: Request) {
 
     const exampleJson = JSON.stringify([exampleObj, { "...": "..." }], null, 2);
 
-    const prompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing.
+    let llmPrompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing.
 Please generate realistic, human-readable data (e.g. names of actual departments, realistic years, 'Yes'/'No', etc) instead of random alphanumeric strings.
 
 The dataset MUST strictly follow this exact schema:
 ${schemaDesc}
 
-For each column, try to respect the requested cardinality (number of unique values) and the statistical distribution as best as you can conceptually. Include an "id" column starting from 1.
+For each column, try to respect the requested cardinality (number of unique values) and the statistical distribution as best as you can conceptually. Include an "id" column starting from 1.`;
 
-Return ONLY valid JSON in the following format (an array of objects). The keys of each object MUST exactly match the schema defined above:
+    if (prompt && prompt.trim() !== '') {
+      llmPrompt += `\n\nUSER REQUEST: The user has additionally requested the following context/theme for the data: "${prompt}". Please incorporate this theme as much as possible while respecting the schema.`;
+    }
+
+    llmPrompt += `\n\nReturn ONLY valid JSON in the following format (an array of objects). The keys of each object MUST exactly match the schema defined above:
 ${exampleJson}
 Do not wrap it in markdown blockquotes (\`\`\`json). Return exactly the JSON array.`;
 
     const response = await openai.chat.completions.create({
       model: 'gpt-5.4-mini-2026-03-17',
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: llmPrompt }],
       temperature: 0.7,
     });
 

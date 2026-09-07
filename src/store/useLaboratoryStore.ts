@@ -36,6 +36,7 @@ interface LaboratoryState {
   removeColumnDef: (colName: string) => void;
   generateData: () => void;
   loadExternalDataset: (dataset: DatasetRow[]) => void;
+  buildAllIndexes: () => void;
 }
 
 export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
@@ -78,17 +79,19 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
     const { rowCount, schema, seed } = get();
     // 1. Generate Dataset
     const newDataset = generateGenericDataset(rowCount, schema.columns, seed);
-    // 2. Build Bitmap Index for all columns
-    const columnsToIndex = schema.columns.map(c => c.name);
-    const newIndex = buildDatasetBitmapIndex(newDataset, columnsToIndex);
-    
-    set({ dataset: newDataset, bitmapIndex: newIndex });
+    // Do NOT build index yet.
+    set({ dataset: newDataset, bitmapIndex: {} });
   },
 
   loadExternalDataset: (newDataset: DatasetRow[]) => {
-    const { schema } = get();
+    set({ dataset: newDataset, bitmapIndex: {}, rowCount: newDataset.length });
+  },
+
+  buildAllIndexes: () => {
+    const { dataset, schema } = get();
+    if (dataset.length === 0) return;
     const columnsToIndex = schema.columns.map(c => c.name);
-    const newIndex = buildDatasetBitmapIndex(newDataset, columnsToIndex);
-    set({ dataset: newDataset, bitmapIndex: newIndex, rowCount: newDataset.length });
+    const newIndex = buildDatasetBitmapIndex(dataset, columnsToIndex);
+    set({ bitmapIndex: newIndex });
   }
 }));
