@@ -24,7 +24,7 @@ type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query
 export default function LaboratoryDashboard() {
   const { 
     rowCount, seed, schema, dataset, bitmapIndex, 
-    setRowCount, setSeed, updateColumnDef, generateData 
+    setRowCount, setSeed, updateColumnDef, generateData, loadExternalDataset 
   } = useLaboratoryStore();
   
   // Local UI State
@@ -110,7 +110,7 @@ export default function LaboratoryDashboard() {
       if (data.error) {
         setExplanation(`Error: ${data.error}`);
       } else if (data.dataset) {
-        loadDataset(data.dataset);
+        loadExternalDataset(data.dataset);
         setExplanation("AI successfully generated and loaded the dataset!");
       }
     } catch (e) {
@@ -121,6 +121,11 @@ export default function LaboratoryDashboard() {
   };
 
   const handleGenerateData = () => {
+    generateData();
+    setExplanation("Data generated successfully based on configuration.");
+  };
+
+  const handleReport = () => {
     const reportData = {
       metadata: { rowCount: dataset.length, schema: schema.columns },
       dataset,

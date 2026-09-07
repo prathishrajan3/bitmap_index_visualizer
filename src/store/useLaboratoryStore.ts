@@ -33,6 +33,7 @@ interface LaboratoryState {
   setSeed: (seed: number) => void;
   updateColumnDef: (colName: string, updates: Partial<ColumnDefinition>) => void;
   generateData: () => void;
+  loadExternalDataset: (dataset: DatasetRow[]) => void;
 }
 
 export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
@@ -63,5 +64,12 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
     const newIndex = buildDatasetBitmapIndex(newDataset, columnsToIndex);
     
     set({ dataset: newDataset, bitmapIndex: newIndex });
+  },
+
+  loadExternalDataset: (newDataset: DatasetRow[]) => {
+    const { schema } = get();
+    const columnsToIndex = schema.columns.map(c => c.name);
+    const newIndex = buildDatasetBitmapIndex(newDataset, columnsToIndex);
+    set({ dataset: newDataset, bitmapIndex: newIndex, rowCount: newDataset.length });
   }
 }));
