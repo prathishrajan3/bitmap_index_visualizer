@@ -324,7 +324,7 @@ export default function LaboratoryDashboard() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* Left Sidebar: Controls */}
-        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/30 flex flex-col shrink-0">
+        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/30 flex flex-col shrink-0 min-h-0">
           <div className="flex-1 min-h-0 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
             <div>
               <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -717,7 +717,7 @@ export default function LaboratoryDashboard() {
         </main>
 
         {/* Right Sidebar: AI Tutor */}
-        <aside className="w-80 border-l border-neutral-800 bg-neutral-900/30 p-6 flex flex-col shrink-0">
+        <aside className="w-80 border-l border-neutral-800 bg-neutral-900/30 p-6 flex flex-col shrink-0 min-h-0">
           <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" /> AI Tutor
           </h2>
