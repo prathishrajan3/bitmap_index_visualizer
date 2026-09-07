@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap } from 'lucide-react';
+import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
+import { useLearningStore } from '@/store/useLearningStore';
 import { buildDatasetBitmapIndex, Bitmap } from '@/lib/bitmap';
 
 // Components
@@ -26,6 +27,8 @@ export default function LaboratoryDashboard() {
     rowCount, seed, schema, dataset, bitmapIndex, 
     setRowCount, setSeed, updateColumnDef, generateData, loadExternalDataset 
   } = useLaboratoryStore();
+  
+  const { currentModuleId, completeModule, modules } = useLearningStore();
   
   // Local UI State
   const [activeTab, setActiveTab] = useState<Tab>('Journey');
@@ -213,6 +216,25 @@ export default function LaboratoryDashboard() {
     } finally {
       setQueryExecuting(false);
     }
+  };
+
+  const renderMarkComplete = (moduleId: string) => {
+    const mod = modules[moduleId];
+    if (!mod || mod.completed || currentModuleId !== moduleId) return null;
+    
+    return (
+      <div className="mt-8 flex justify-center border-t border-neutral-800 pt-6 pb-4 shrink-0">
+        <button 
+          onClick={() => {
+            completeModule(moduleId, 100);
+            setExplanation(`Excellent! You have mastered the ${mod.title} module.`);
+          }}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full flex items-center gap-2 font-bold transition-transform hover:scale-105 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+        >
+          <CheckCircle2 className="w-5 h-5" /> Mark Module as Complete
+        </button>
+      </div>
+    );
   };
 
   // Extract all bitmaps into a flat array for Algebra and Compression labs
@@ -411,7 +433,7 @@ export default function LaboratoryDashboard() {
             
             {activeTab === 'Journey' && (
               <div className="h-full">
-                <LearningJourney />
+                <LearningJourney onNavigate={(tab) => setActiveTab(tab as Tab)} />
               </div>
             )}
 
@@ -458,28 +480,32 @@ export default function LaboratoryDashboard() {
                     </tbody>
                   </table>
                 </div>
+                {renderMarkComplete('intro')}
               </div>
             )}
 
             {activeTab === 'Builder' && (
-              <div className="h-full space-y-8">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Blocks className="w-5 h-5 text-blue-400"/> Bitmap Construction Visualizer</h2>
-                {schema.columns.map(col => allBitmaps.find(b => b.sourceColumn === col.name)).filter(Boolean).length > 0 ? (
-                  <div className="space-y-8 pb-10">
-                    {schema.columns
-                      .map(col => allBitmaps.find(b => b.sourceColumn === col.name))
-                      .filter(Boolean)
-                      .map((bmp, i) => (
-                        <div key={i} className="border-b border-neutral-800 pb-8 last:border-0">
-                          <h3 className="text-md font-semibold text-neutral-400 mb-4">Building vector for: {bmp!.sourceColumn} = {String(bmp!.sourceValue)}</h3>
-                          <BitmapBuilder dataset={dataset} bitmap={bmp!} />
-                        </div>
-                      ))
-                    }
-                  </div>
-                ) : (
-                  <div className="text-neutral-500">Generate a dataset first.</div>
-                )}
+              <div className="h-full space-y-8 flex flex-col">
+                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Blocks className="w-5 h-5 text-blue-400"/> Bitmap Construction Visualizer</h2>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  {schema.columns.map(col => allBitmaps.find(b => b.sourceColumn === col.name)).filter(Boolean).length > 0 ? (
+                    <div className="space-y-8 pb-10">
+                      {schema.columns
+                        .map(col => allBitmaps.find(b => b.sourceColumn === col.name))
+                        .filter(Boolean)
+                        .map((bmp, i) => (
+                          <div key={i} className="border-b border-neutral-800 pb-8 last:border-0">
+                            <h3 className="text-md font-semibold text-neutral-400 mb-4">Building vector for: {bmp!.sourceColumn} = {String(bmp!.sourceValue)}</h3>
+                            <BitmapBuilder dataset={dataset} bitmap={bmp!} />
+                          </div>
+                        ))
+                      }
+                    </div>
+                  ) : (
+                    <div className="text-neutral-500">Generate a dataset first.</div>
+                  )}
+                </div>
+                {renderMarkComplete('construction')}
               </div>
             )}
 
@@ -501,16 +527,22 @@ export default function LaboratoryDashboard() {
             )}
 
             {activeTab === 'Algebra' && (
-              <div className="h-full">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Calculator className="w-5 h-5 text-blue-400"/> Boolean Algebra Playground</h2>
-                <BitmapAlgebra availableBitmaps={allBitmaps} />
+              <div className="h-full flex flex-col">
+                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Calculator className="w-5 h-5 text-blue-400"/> Boolean Algebra Playground</h2>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                  <BitmapAlgebra availableBitmaps={allBitmaps} />
+                </div>
+                {renderMarkComplete('algebra')}
               </div>
             )}
 
             {activeTab === 'Compression' && (
-              <div className="h-full">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><FileArchive className="w-5 h-5 text-blue-400"/> Compression Laboratory</h2>
-                <CompressionLab availableBitmaps={allBitmaps} />
+              <div className="h-full flex flex-col">
+                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><FileArchive className="w-5 h-5 text-blue-400"/> Compression Laboratory</h2>
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                  <CompressionLab availableBitmaps={allBitmaps} />
+                </div>
+                {renderMarkComplete('compression')}
               </div>
             )}
 
@@ -570,10 +602,11 @@ export default function LaboratoryDashboard() {
             
             {activeTab === 'QueryPlan' && (
               <div className="h-full flex flex-col">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Search className="w-5 h-5 text-blue-400"/> Query Execution Plan Visualizer</h2>
+                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Search className="w-5 h-5 text-blue-400"/> Query Execution Plan Visualizer</h2>
                 <div className="flex-1 min-h-0">
                   <QueryPlanVisualizer />
                 </div>
+                {renderMarkComplete('execution')}
               </div>
             )}
 

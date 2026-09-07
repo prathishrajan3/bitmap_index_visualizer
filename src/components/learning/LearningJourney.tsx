@@ -2,14 +2,25 @@ import React from 'react';
 import { useLearningStore } from '@/store/useLearningStore';
 import { GraduationCap, CheckCircle2, Circle, ArrowRight } from 'lucide-react';
 
-export function LearningJourney() {
-  const { modules, currentModuleId, setCurrentModule, completeModule, overallMastery, resetProgress } = useLearningStore();
+export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => void }) {
+  const { modules, currentModuleId, setCurrentModule, overallMastery, resetProgress } = useLearningStore();
   const moduleList = Object.values(modules);
 
-  const handleSimulateComplete = (id: string) => {
-    // Educational wrapper function. In a full implementation, 
-    // a quiz or interaction threshold would trigger this.
-    completeModule(id, 100);
+  const handleStartModule = (id: string) => {
+    setCurrentModule(id);
+    
+    // Map module ID to the corresponding tab
+    const tabMap: Record<string, string> = {
+      'intro': 'Dataset',
+      'construction': 'Builder',
+      'algebra': 'Algebra',
+      'compression': 'Compression',
+      'execution': 'QueryPlan'
+    };
+    
+    if (tabMap[id]) {
+      onNavigate(tabMap[id]);
+    }
   };
 
   return (
@@ -64,10 +75,7 @@ export function LearningJourney() {
               )}
 
               <button 
-                onClick={() => {
-                  setCurrentModule(mod.id);
-                  if (!mod.completed) handleSimulateComplete(mod.id);
-                }}
+                onClick={() => handleStartModule(mod.id)}
                 className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
               >
                 {mod.completed ? 'Review' : 'Start'} <ArrowRight className="w-4 h-4" />
