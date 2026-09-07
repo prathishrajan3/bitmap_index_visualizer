@@ -188,25 +188,36 @@ export default function LaboratoryDashboard() {
     }
   };
 
+  const [queryDbResults, setQueryDbResults] = useState<any[] | null>(null);
+
   const executeDbQuery = async () => {
     setQueryExecuting(true);
     setQueryResultMsg("Executing on Neon DB...");
+    setQueryDbResults(null);
     try {
       const res = await fetch('/api/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: sqlQuery })
+        body: JSON.stringify({ 
+          query: sqlQuery,
+          dataset,
+          schema: schema.columns 
+        })
       });
       const data = await res.json();
       if (data.error) {
         setQueryResultMsg(`Error: ${data.error}`);
       } else {
         setQueryResultMsg(`Execution Time: ${data.executionTimeMs}ms. Returned ${data.results?.length} rows.`);
+        if (Array.isArray(data.results)) {
+          setQueryDbResults(data.results);
+        }
         // Try to visualize result if it's a specific value
         const match = sqlQuery.match(/([a-zA-Z0-9_]+)\s*=\s*'([^']+)'/i);
-        if (match && match[1] && match[2]) {
-          setActiveValue({col: match[1], val: match[2]});
-          setActiveTab('Matrix');
+        if (match && match[1] && match[2] && activeTab === 'Query') {
+          // Do not navigate away from query tab so user can see the table!
+          // setActiveValue({col: match[1], val: match[2]});
+          // setActiveTab('Matrix');
         }
       }
     } catch (e) {
@@ -651,6 +662,33 @@ export default function LaboratoryDashboard() {
                   {queryResultMsg && (
                     <div className="text-sm text-neutral-300 bg-neutral-950 border border-neutral-800 p-4 rounded mt-4 break-words font-mono">
                       {queryResultMsg}
+                    </div>
+                  )}
+
+                  {queryDbResults && queryDbResults.length > 0 && (
+                    <div className="mt-4 border border-neutral-800 rounded-lg overflow-hidden bg-neutral-900/50">
+                      <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                        <table className="w-full text-left text-sm">
+                          <thead className="sticky top-0 bg-neutral-900 border-b border-neutral-800 z-10">
+                            <tr className="text-neutral-400">
+                              {Object.keys(queryDbResults[0]).map(key => (
+                                <th key={key} className="py-2 px-4 font-medium border-r border-neutral-800/50">{key}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {queryDbResults.map((row, idx) => (
+                              <tr key={idx} className="border-b border-neutral-800/30 hover:bg-neutral-800/50 transition-colors">
+                                {Object.values(row).map((val: any, jdx) => (
+                                  <td key={jdx} className="py-1.5 px-4 text-neutral-300 border-r border-neutral-800/30">
+                                    {String(val)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
