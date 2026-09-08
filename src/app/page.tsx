@@ -147,6 +147,8 @@ export default function LaboratoryDashboard() {
   };
 
 
+  const [tutorPrompt, setTutorPrompt] = useState('');
+
   const askAi = async () => {
     setAiLoading(true);
     setExplanation("Thinking...");
@@ -160,7 +162,8 @@ export default function LaboratoryDashboard() {
           activeRow,
           activeTab,
           sqlQuery,
-          compareMetrics: activeTab === 'Compare' ? require('@/lib/compareEngine').calculateMetrics(dataset, bitmapIndex, sqlQuery, schema.columns.length) : undefined
+          compareMetrics: activeTab === 'Compare' ? require('@/lib/compareEngine').calculateMetrics(dataset, bitmapIndex, sqlQuery, schema.columns.length) : undefined,
+          prompt: tutorPrompt
         })
       });
       const data = await res.json();
@@ -771,13 +774,21 @@ export default function LaboratoryDashboard() {
             )}
           </div>
 
-          <button 
-            onClick={askAi}
-            disabled={aiLoading}
-            className="mt-4 shrink-0 w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Sparkles className="w-4 h-4" /> Explain This
-          </button>
+          <div className="mt-4 shrink-0 flex flex-col gap-2">
+            <textarea
+              value={tutorPrompt}
+              onChange={e => setTutorPrompt(e.target.value)}
+              placeholder="Ask a specific question... (e.g. Teach me about cardinality)"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-sm outline-none focus:border-amber-500/50 resize-none h-16"
+            />
+            <button 
+              onClick={askAi}
+              disabled={aiLoading}
+              className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" /> Explain This
+            </button>
+          </div>
         </aside>
 
       </div>

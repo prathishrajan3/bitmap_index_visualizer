@@ -15,11 +15,13 @@ export async function POST(req: Request) {
       });
     }
 
-    const { config, activeValue, activeRow, activeTab, sqlQuery, compareMetrics } = await req.json();
+    const { config, activeValue, activeRow, activeTab, sqlQuery, compareMetrics, prompt } = await req.json();
 
     let context = `The student is experimenting with a Bitmap Index Simulation.\n`;
     
-    if (activeTab === 'Compare' && compareMetrics) {
+    if (prompt) {
+      context += `The student specifically asked: "${prompt}". Please answer this question directly while using the active context.`;
+    } else if (activeTab === 'Compare' && compareMetrics) {
       context += `The student is comparing a Table Scan vs Bitmap Index for the query: "${sqlQuery}".\n`;
       context += `Metrics:\n`;
       context += `- Total Rows: ${compareMetrics.totalRows}\n`;
