@@ -34,7 +34,7 @@ export function BitmapMatrix({ bitmap, onBitClick, activeRowId }: BitmapMatrixPr
 
       <div 
         ref={parentRef} 
-        className="h-64 overflow-auto custom-scrollbar relative"
+        className="max-h-64 min-h-[60px] overflow-auto custom-scrollbar relative"
       >
         <div 
           style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}
