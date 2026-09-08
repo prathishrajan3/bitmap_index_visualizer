@@ -13,13 +13,16 @@ export async function POST(req: Request) {
       });
     }
 
-    const { schemaContext, prompt } = await req.json();
+    const { schemaContext, prompt, datasetSample } = await req.json();
 
-    let userMessage = `Here is the dataset schema context: ${schemaContext}. Please generate a valid SQL query for this dataset.`;
+    let userMessage = `Here is the dataset schema context: ${schemaContext}.
+Here is a sample of the actual data: ${JSON.stringify(datasetSample)}.
+Please generate a valid SQL query for this dataset.
+IMPORTANT: You MUST use exact matching string values from the sample data in your WHERE clauses. Do NOT guess values. For example, if the data has 'CSE', do not query for 'Computer Science'.`;
     if (prompt) {
-      userMessage += ` The user explicitly requested: "${prompt}".`;
+      userMessage += `\n\nThe user explicitly requested: "${prompt}".`;
     } else {
-      userMessage += ` Generate a random, interesting SELECT query for this dataset that filters on the values.`;
+      userMessage += `\n\nGenerate a random, interesting SELECT query for this dataset that filters on the values.`;
     }
 
     const response = await openai.chat.completions.create({

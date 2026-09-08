@@ -182,7 +182,8 @@ export default function LaboratoryDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           schemaContext: `Table: DatasetRow (id INT, ${cols})`,
-          prompt: sqlPrompt 
+          prompt: sqlPrompt,
+          datasetSample: dataset.slice(0, 5)
         })
       });
       const data = await res.json();
@@ -690,6 +691,45 @@ export default function LaboratoryDashboard() {
                       </div>
                     </div>
                   )}
+
+                  {queryDbResults && (
+                    <div className="mt-8 flex gap-6 overflow-x-auto pb-4 custom-scrollbar items-start">
+                      {Array.from(sqlQuery.matchAll(/([a-zA-Z0-9_]+)\s*=\s*'([^']+)'/gi)).map((m, idx) => {
+                        const col = m[1];
+                        const val = m[2];
+                        const bitmap = allBitmaps.find(b => b.sourceColumn.toLowerCase() === col.toLowerCase() && String(b.sourceValue).toLowerCase() === val.toLowerCase());
+                        if (!bitmap) return null;
+                        
+                        const matchingIds = queryDbResults.map(r => r.id);
+
+                        return (
+                          <div key={idx} className="bg-neutral-950 border border-neutral-800 rounded-lg p-4 shrink-0 flex flex-col gap-4">
+                            <div className="text-sm font-medium text-amber-400">Bitmap: {bitmap.sourceColumn} = '{String(bitmap.sourceValue)}'</div>
+                            <div className="grid grid-cols-10 gap-1.5">
+                              {bitmap.bits.map((bit, bitIdx) => {
+                                const rowId = bitIdx + 1;
+                                const isMatch = matchingIds.includes(rowId);
+                                return (
+                                  <div
+                                    key={bitIdx}
+                                    title={`Row ${rowId}: ${bit}`}
+                                    className={`w-8 h-8 flex items-center justify-center rounded text-sm font-mono transition-all duration-300
+                                      ${bit === 1 && isMatch ? 'bg-emerald-600/30 text-emerald-400 border border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] scale-110 z-10' 
+                                      : bit === 1 ? 'bg-blue-600 text-white' 
+                                      : 'bg-neutral-800 text-neutral-600'}
+                                    `}
+                                  >
+                                    {bit}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
                 </div>
 
               </div>
