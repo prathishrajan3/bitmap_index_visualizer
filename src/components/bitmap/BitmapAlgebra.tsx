@@ -13,11 +13,12 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
   const [operator, setOperator] = useState<'AND' | 'OR' | 'XOR'>('AND');
   const [result, setResult] = useState<Bitmap | null>(null);
 
-  const handleCalculate = () => {
+  const handleCalculate = React.useCallback(() => {
     if (availableBitmaps.length < 2) return;
     
     const left = availableBitmaps[leftIndex];
     const right = availableBitmaps[rightIndex];
+    if (!left || !right) return;
     
     let resultBits: number[];
     if (operator === 'AND') resultBits = bitmapAnd(left.bits, right.bits);
@@ -29,7 +30,11 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
       `Derived (${left.sourceColumn} ${operator} ${right.sourceColumn})`,
       `${left.sourceValue} ${operator} ${right.sourceValue}`
     ));
-  };
+  }, [availableBitmaps, leftIndex, rightIndex, operator]);
+
+  React.useEffect(() => {
+    handleCalculate();
+  }, [handleCalculate]);
 
   if (availableBitmaps.length < 2) {
     return <div className="text-sm text-neutral-500 p-4 border border-neutral-800 rounded">Generate a dataset with at least 2 distinct values to use the algebra playground.</div>;
@@ -76,20 +81,14 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
             ))}
           </select>
         </div>
-
-        <button 
-          onClick={handleCalculate}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded flex items-center justify-center h-10 w-12 transition-colors"
-          title="Calculate"
-        >
-          <Calculator className="w-4 h-4" />
-        </button>
       </div>
 
-      {result && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {result && availableBitmaps[leftIndex] && availableBitmaps[rightIndex] && (
+        <div className="flex flex-col gap-4">
           <div className="opacity-75"><BitmapMatrix bitmap={availableBitmaps[leftIndex]} /></div>
+          <div className="flex justify-center text-blue-400 font-bold text-lg">{operator}</div>
           <div className="opacity-75"><BitmapMatrix bitmap={availableBitmaps[rightIndex]} /></div>
+          <div className="flex justify-center text-emerald-400 font-bold text-lg">=</div>
           <div className="ring-2 ring-emerald-500 rounded"><BitmapMatrix bitmap={result} /></div>
         </div>
       )}
