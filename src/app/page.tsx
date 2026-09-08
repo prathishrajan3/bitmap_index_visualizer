@@ -12,15 +12,12 @@ import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
 import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompressionLab } from '@/components/bitmap/CompressionLab';
-import { QueryPlanVisualizer } from '@/components/query/QueryPlanVisualizer';
 import { BTreeVisualizer } from '@/components/query/BTreeVisualizer';
 import { CompareLab } from '@/components/compare/CompareLab';
 import { LearningJourney } from '@/components/learning/LearningJourney';
 import { Glossary } from '@/components/learning/Glossary';
 import { BookOpen } from 'lucide-react';
-
-type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'QueryPlan' | 'BTree' | 'Journey' | 'Compare';
-
+type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'BTree' | 'Journey' | 'Compare';
 
 
 export default function LaboratoryDashboard() {
@@ -149,22 +146,6 @@ export default function LaboratoryDashboard() {
     setExplanation("Data generated successfully based on configuration.");
   };
 
-  const handleReport = () => {
-    const reportData = {
-      metadata: { rowCount: dataset.length, schema: schema.columns },
-      dataset,
-      bitmapIndex
-    };
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'bitmap_index_report.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
 
   const askAi = async () => {
     setAiLoading(true);
@@ -304,9 +285,6 @@ export default function LaboratoryDashboard() {
             <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
               <GitCompare className="w-4 h-4" /> Compare
             </button>
-          <button onClick={handleReport} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
-            <Download className="w-4 h-4" /> Report
-          </button>
         </div>
       </header>
 
@@ -457,8 +435,6 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
             <TabBtn icon={<FileArchive className="w-4 h-4 shrink-0"/>} label="Compression" active={activeTab==='Compression'} onClick={() => setActiveTab('Compression')} />
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
-            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
-            <TabBtn icon={<Search className="w-4 h-4 shrink-0"/>} label="Query Plan" active={activeTab==='QueryPlan'} onClick={() => setActiveTab('QueryPlan')} />
           </div>
 
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
@@ -719,15 +695,6 @@ export default function LaboratoryDashboard() {
               </div>
             )}
             
-            {activeTab === 'QueryPlan' && (
-              <div className="h-full flex flex-col">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Search className="w-5 h-5 text-blue-400"/> Query Execution Plan Visualizer</h2>
-                <div className="flex-1 min-h-0">
-                  <QueryPlanVisualizer />
-                </div>
-                {renderMarkComplete('execution')}
-              </div>
-            )}
 
             {activeTab === 'BTree' && (
               <div className="h-full">
