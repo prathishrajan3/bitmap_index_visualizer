@@ -9,13 +9,12 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
   const handleStartModule = (id: string) => {
     setCurrentModule(id);
     
-    // Map module ID to the corresponding tab
     const tabMap: Record<string, string> = {
       'intro': 'Dataset',
       'construction': 'Builder',
       'algebra': 'Algebra',
       'compression': 'Compression',
-      'execution': 'QueryPlan'
+      'execution': 'Query'
     };
     
     if (tabMap[id]) {
