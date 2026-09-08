@@ -56,8 +56,17 @@ export async function POST(req: Request) {
     const results = await prisma.$queryRawUnsafe(finalQuery, ...params);
     const endTime = performance.now();
 
+    // Convert BigInt to string to prevent JSON serialization errors
+    const safeResults = Array.isArray(results) ? results.map((row: any) => {
+      const newRow: any = {};
+      for (const key in row) {
+        newRow[key] = typeof row[key] === 'bigint' ? row[key].toString() : row[key];
+      }
+      return newRow;
+    }) : results;
+
     return NextResponse.json({ 
-      results,
+      results: safeResults,
       executionTimeMs: Math.round(endTime - startTime)
     });
 
