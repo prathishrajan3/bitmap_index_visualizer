@@ -117,14 +117,20 @@ export default function LaboratoryDashboard() {
       const res = await fetch('/api/generate-dataset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowCount, schema: schema.columns, prompt: aiDatasetPrompt })
+        body: JSON.stringify({ 
+          rowCount, 
+          schema: schema.columns, 
+          prompt: aiDatasetPrompt,
+          seed: Math.random() // Send a random nonce to ensure the AI generates different data
+        })
       });
       const data = await res.json();
       if (data.error) {
         setExplanation(`Error: ${data.error}`);
       } else if (data.dataset) {
+        skipNextGenerate.current = true;
         loadExternalDataset(data.dataset);
-        setExplanation("AI successfully generated and loaded the dataset!");
+        setExplanation("AI successfully generated and loaded a unique dataset!");
       }
     } catch (e) {
       setExplanation("Failed to contact the AI generator.");

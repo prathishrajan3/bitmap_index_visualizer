@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { rowCount, schema, prompt } = await req.json();
+    const { rowCount, schema, prompt, seed } = await req.json();
     const rows = Math.min(Math.max(10, rowCount || 10), 100); // Limit to 100 rows for AI generation to save tokens/time
 
     const schemaDesc = schema ? schema.map((c: any) => `- '${c.name}': cardinality ~${c.cardinality}, distribution ${c.distribution}`).join('\n') : '';
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
 
     let llmPrompt = `You are a Database Systems professor. Generate a sample dataset of ${rows} rows that is perfectly designed to teach students about Bitmap Indexing.
 Please generate realistic, human-readable data (e.g. names of actual departments, realistic years, 'Yes'/'No', etc) instead of random alphanumeric strings.
+
+IMPORTANT: Use this random seed/nonce (${seed}) to ensure this generation is COMPLETELY DIFFERENT from previous generations. Choose different domain values, different distributions, and shuffle the row order differently than your default output.
 
 The dataset MUST strictly follow this exact schema:
 ${schemaDesc}
