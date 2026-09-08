@@ -24,7 +24,7 @@ type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query
 
 
 export default function LaboratoryDashboard() {
-  const { dataset, schema, bitmapIndex, loadExternalDataset, generateData, updateColumnDef, addColumnDef, removeColumnDef, setRowCount, setSeed, seed, rowCount, buildAllIndexes } = useLaboratoryStore();
+  const { dataset, schema, bitmapIndex, loadExternalDataset, generateData, updateColumnDef, addColumnDef, removeColumnDef, setRowCount, setSeed, seed, rowCount, buildIndexes } = useLaboratoryStore();
   
   const { currentModuleId, completeModule, modules } = useLearningStore();
   
@@ -41,6 +41,11 @@ export default function LaboratoryDashboard() {
   const [sqlPrompt, setSqlPrompt] = useState<string>("");
   const [queryExecuting, setQueryExecuting] = useState(false);
   const [queryResultMsg, setQueryResultMsg] = useState<string>("");
+  
+  const [selectedBuildColumns, setSelectedBuildColumns] = useState<string[]>([]);
+  useEffect(() => {
+    setSelectedBuildColumns(schema.columns.map(c => c.name));
+  }, [schema.columns]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -526,16 +531,46 @@ export default function LaboratoryDashboard() {
                       }
                     </div>
                   ) : dataset.length > 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 text-neutral-500 gap-4">
-                      <p>Dataset loaded. Ready to construct bitmap indexes.</p>
+                    <div className="flex flex-col items-center justify-center h-full text-neutral-500 gap-6 mt-10">
+                      <p className="text-lg">Select columns to construct bitmap indexes for:</p>
+                      
+                      <div className="flex flex-wrap gap-4 justify-center max-w-2xl bg-neutral-900/50 p-6 rounded-lg border border-neutral-800">
+                        {schema.columns.map(col => (
+                          <label key={col.name} className="flex items-center gap-2 cursor-pointer bg-neutral-950 px-4 py-2 rounded-md border border-neutral-800 hover:border-neutral-600 transition-colors">
+                            <input 
+                              type="checkbox" 
+                              className="w-4 h-4 text-blue-600 bg-neutral-900 border-neutral-700 rounded focus:ring-blue-600 focus:ring-2"
+                              checked={selectedBuildColumns.includes(col.name)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedBuildColumns([...selectedBuildColumns, col.name]);
+                                } else {
+                                  setSelectedBuildColumns(selectedBuildColumns.filter(c => c !== col.name));
+                                }
+                              }}
+                            />
+                            <span className="text-neutral-300 font-medium">{col.name}</span>
+                          </label>
+                        ))}
+                      </div>
+
                       <button 
                         onClick={() => {
-                          buildAllIndexes();
+                          if (selectedBuildColumns.length === 0) {
+                            setExplanation("Please select at least one column to build indexes for.");
+                            return;
+                          }
+                          buildIndexes(selectedBuildColumns);
                           setExplanation("Indexes built! You can now visualize the construction below or proceed to the Matrix tab.");
                         }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition-colors font-medium flex items-center justify-center gap-2"
+                        disabled={selectedBuildColumns.length === 0}
+                        className={`py-3 px-8 rounded-md transition-colors font-bold flex items-center justify-center gap-2 ${
+                          selectedBuildColumns.length > 0 
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-900/20' 
+                            : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                        }`}
                       >
-                        <Blocks className="w-4 h-4" /> Build All Bitmap Indexes
+                        <Blocks className="w-5 h-5" /> Build Selected Bitmap Indexes
                       </button>
                     </div>
                   ) : (
