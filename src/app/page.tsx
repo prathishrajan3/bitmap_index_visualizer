@@ -693,7 +693,7 @@ export default function LaboratoryDashboard() {
                   )}
 
                   {queryDbResults && (
-                    <div className="mt-8 flex gap-6 overflow-x-auto pb-4 custom-scrollbar items-start">
+                    <div className="mt-8 flex flex-col gap-6 pb-4 items-start">
                       {Array.from(sqlQuery.matchAll(/([a-zA-Z0-9_]+)\s*=\s*'([^']+)'/gi)).map((m, idx) => {
                         const col = m[1];
                         const val = m[2];
