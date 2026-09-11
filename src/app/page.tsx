@@ -12,12 +12,10 @@ import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
 import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompressionLab } from '@/components/bitmap/CompressionLab';
-import { BTreeVisualizer } from '@/components/query/BTreeVisualizer';
 import { CompareLab } from '@/components/compare/CompareLab';
 import { LearningJourney } from '@/components/learning/LearningJourney';
-import { Glossary } from '@/components/learning/Glossary';
 import { BookOpen } from 'lucide-react';
-type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'BTree' | 'Journey' | 'Compare';
+type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'Journey' | 'Compare';
 
 
 export default function LaboratoryDashboard() {
@@ -31,7 +29,6 @@ export default function LaboratoryDashboard() {
   const [activeValue, setActiveValue] = useState<{col: string, val: string} | null>(null);
   const [explanation, setExplanation] = useState<string>("Configure your experiment and click Generate Data.");
   const [aiLoading, setAiLoading] = useState(false);
-  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   // Advanced Database State
   const [sqlQuery, setSqlQuery] = useState<string>("");
@@ -280,20 +277,11 @@ export default function LaboratoryDashboard() {
           </h1>
         </div>
         <div className="flex gap-4">
-          <button onClick={() => setGlossaryOpen(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-900/30 text-blue-400 hover:bg-blue-900/50 border border-blue-900/50 text-sm transition-colors">
-            <BookOpen className="w-4 h-4" /> Glossary
-          </button>
-          <button onClick={() => setActiveTab('BTree')} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 text-sm transition-colors border border-blue-600/50">
-            <Blocks className="w-4 h-4" /> B-Tree Lab
-          </button>
-            <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
+          <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
               <GitCompare className="w-4 h-4" /> Compare
             </button>
         </div>
       </header>
-
-      {/* Glossary Slideover */}
-      <Glossary isOpen={glossaryOpen} onClose={() => setGlossaryOpen(false)} onNavigateToTab={(tab: string) => setActiveTab(tab as any)} />
 
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
@@ -738,13 +726,6 @@ export default function LaboratoryDashboard() {
               </div>
             )}
             
-
-            {activeTab === 'BTree' && (
-              <div className="h-full">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2"><Blocks className="w-5 h-5 text-blue-400"/> Conceptual B-Tree Laboratory</h2>
-                <BTreeVisualizer />
-              </div>
-            )}
 
             {activeTab === 'Compare' && (
               <div className="h-full">
