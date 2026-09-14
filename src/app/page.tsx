@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -279,6 +280,9 @@ export default function LaboratoryDashboard() {
           <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
             <GitCompare className="w-4 h-4" /> Compare
           </button>
+          <Link href="/city" className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
+            <LayoutGrid className="w-4 h-4" /> Smart City
+          </Link>
         </div>
       </header>
 
