@@ -8,11 +8,14 @@ import { benchmarkCityQuery, CityBenchmarkComparison } from '@/lib/city/cityStat
 import { PRESET_QUERIES } from '@/lib/city/cityScenarios';
 import { INDEXED_CITY_FIELDS } from '@/lib/city/cityBitmapEngine';
 import CityMetrics from './CityMetrics';
+import BitmapQueryVisualizer from './BitmapQueryVisualizer';
+import CityTooltip from './ui/CityTooltip';
 
 export default function CitySidebar() {
   const { dataset, bitmapIndex, setActiveQuery, heatmapMode, setHeatmapMode } = useCityStore();
   const [nlQuery, setNlQuery] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
+  const [executionStage, setExecutionStage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CityBenchmarkComparison | null>(null);
 
@@ -22,22 +25,25 @@ export default function CitySidebar() {
     executeAST(ast);
   };
 
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
   const handleExecuteNL = async () => {
     if (!nlQuery.trim()) return;
     setIsExecuting(true);
     setError(null);
+    setExecutionStage('Understanding question...');
 
     try {
-      // Use existing generate-query endpoint but we need to ensure the backend supports "mode: 'city'".
-      // Since we can't change the backend easily without knowing its exact code, 
-      // we'll pass domain/mode in the prompt or request body.
+      await delay(400); // small delay to make the first state visible
+      setExecutionStage('Building Bitmap query...');
+      
       const response = await fetch('/api/generate-query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: nlQuery, 
           domain: 'city',
-          mode: 'city', // the user requested mode='city'
+          mode: 'city',
           allowedColumns: INDEXED_CITY_FIELDS
         }),
       });
@@ -45,20 +51,20 @@ export default function CitySidebar() {
       if (!response.ok) throw new Error('AI Engine failed to generate query');
 
       const data = await response.json();
-      
-      // We expect the AI to return a JSON object representing the AST.
-      // E.g. { domain: "city", query: { operator: "AND", conditions: [...] } }
-      // The parseAICityQuery function validates it thoroughly.
       const validFields = new Set(INDEXED_CITY_FIELDS as string[]);
       const ast = parseAICityQuery(data.query || data, validFields);
       
+      setExecutionStage('Executing...');
+      await delay(300); // small delay for visual feedback
+
       executeAST(ast);
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to parse AI response. Ensure it returns valid City Query AST.');
+      setError("I COULDN'T INTERPRET THAT QUERY. Try: 'Find severe traffic areas'");
     } finally {
       setIsExecuting(false);
+      setExecutionStage('');
     }
   };
 
@@ -104,17 +110,24 @@ export default function CitySidebar() {
       <div className="p-4 flex flex-col gap-4 overflow-y-auto flex-1">
         
         {/* Natural Language Input */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-neutral-300 flex justify-between">
-            <span>AI Natural Language</span>
-            <span className="text-emerald-500/50">mode: city</span>
-          </label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase">
+              1. Ask the City
+            </label>
+            <CityTooltip content="The AI will translate your natural language question into a structured Bitmap query.">
+              <span className="w-4 h-4 rounded-full border border-neutral-700 text-neutral-500 flex items-center justify-center text-[10px] cursor-help">?</span>
+            </CityTooltip>
+          </div>
+          <p className="text-xs text-neutral-500 leading-snug">
+            Describe what you want to find in natural language.
+          </p>
           <div className="relative">
             <textarea 
               value={nlQuery}
               onChange={(e) => setNlQuery(e.target.value)}
-              placeholder="e.g. Find all critical hospitals with severe traffic nearby..."
-              className="w-full bg-[#151518] border border-neutral-800 rounded-md p-3 text-sm focus:outline-none focus:border-emerald-500/50 resize-none h-24 text-neutral-200 placeholder:text-neutral-600"
+              placeholder="Example: Find all critical hospitals with severe traffic nearby..."
+              className="w-full bg-[#151518] border border-neutral-800 rounded-md p-3 text-sm focus:outline-none focus:border-emerald-500/50 resize-none h-24 text-neutral-200 placeholder:text-neutral-600 shadow-inner"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -122,65 +135,121 @@ export default function CitySidebar() {
                 }
               }}
             />
-            <button 
-              onClick={handleExecuteNL}
-              disabled={isExecuting || !nlQuery.trim()}
-              className="absolute bottom-3 right-3 p-1.5 bg-emerald-500/20 text-emerald-400 rounded-md hover:bg-emerald-500/30 disabled:opacity-50 transition-colors"
-            >
-              {isExecuting ? <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            </button>
           </div>
+          
+          <button 
+            onClick={handleExecuteNL}
+            disabled={isExecuting || !nlQuery.trim()}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 rounded-md transition-colors disabled:opacity-50"
+          >
+            {isExecuting ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-semibold uppercase">{executionStage}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">Analyze City</span>
+              </>
+            )}
+          </button>
+          
           {error && (
-            <div className="text-xs text-red-400 bg-red-400/10 p-2 rounded border border-red-400/20 flex gap-2 items-start">
+            <div className="text-xs text-red-400 bg-red-400/10 p-3 rounded border border-red-400/20 flex gap-2 items-start mt-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
         </div>
 
-        {/* Preset Queries */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-neutral-300">Fast Scenario Queries</label>
-          <div className="grid grid-cols-2 gap-2">
+        {/* Quick Analysis */}
+        <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-neutral-800/50">
+          <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase">
+            2. Quick Analysis
+          </label>
+          <p className="text-xs text-neutral-500 mb-1 leading-snug">Explore common city conditions instantly.</p>
+          <div className="grid grid-cols-1 gap-2">
             {Object.keys(PRESET_QUERIES).map(preset => (
               <button
                 key={preset}
                 onClick={() => handleExecutePreset(preset)}
-                className="px-2 py-2 bg-[#151518] hover:bg-neutral-800 border border-neutral-800 rounded-md text-xs text-left truncate transition-colors text-neutral-300 hover:text-emerald-400 flex items-center justify-between group"
+                className="p-2.5 bg-[#151518] hover:bg-neutral-800 border border-neutral-800 hover:border-emerald-500/30 rounded-md text-left transition-colors flex items-center justify-between group"
               >
-                <span className="truncate">{preset}</span>
-                <Play className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-neutral-300 group-hover:text-emerald-400">{preset}</span>
+                  <span className="text-[10px] text-neutral-500">{
+                    preset === 'Traffic Hotspots' ? 'Find severe congestion' :
+                    preset === 'Pollution Hotspots' ? 'Find poor air quality' :
+                    preset === 'Accident Zones' ? 'Active incidents' :
+                    preset === 'Emergency Zones' ? 'Critical risk areas' :
+                    preset === 'Hospital Overload' ? 'Critical capacity' :
+                    preset === 'Power Failures' ? 'Offline substations' : 'Multiple simultaneous conditions'
+                  }</span>
+                </div>
+                <Play className="w-4 h-4 text-emerald-500/50 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
           </div>
         </div>
 
         {/* Heatmap Controls */}
-        <div className="flex flex-col gap-2 mt-2">
-          <label className="text-xs font-semibold text-neutral-300">Map Heatmap Layer</label>
-          <div className="flex gap-2">
-            {['None', 'Traffic', 'Pollution', 'Risk'].map(mode => (
-              <button
-                key={mode}
-                onClick={() => setHeatmapMode(mode as any)}
-                className={`px-3 py-1.5 rounded-full text-xs transition-colors ${heatmapMode === mode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 border border-transparent'}`}
-              >
-                {mode}
-              </button>
+        <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-neutral-800/50">
+          <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase">
+            3. Map Layer
+          </label>
+          <p className="text-xs text-neutral-500 mb-1 leading-snug">Choose what the city map should emphasize.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { id: 'None', label: 'Overview', desc: 'Default city view' },
+              { id: 'Traffic', label: 'Traffic', desc: 'Visualize traffic severity' },
+              { id: 'Pollution', label: 'Air Quality', desc: 'Visualize pollution conditions' },
+              { id: 'Risk', label: 'Risk', desc: 'Visualize emergency risk' }
+            ].map(mode => (
+              <CityTooltip key={mode.id} content={mode.desc}>
+                <button
+                  onClick={() => setHeatmapMode(mode.id as any)}
+                  className={`w-full py-2 rounded-md text-xs font-medium transition-colors border ${heatmapMode === mode.id ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-[#151518] text-neutral-400 hover:bg-neutral-800 border-neutral-800 hover:text-neutral-300'}`}
+                >
+                  {mode.label}
+                </button>
+              </CityTooltip>
             ))}
           </div>
         </div>
 
-        {/* Results / Metrics Panel */}
-        {lastResult && (
-          <div className="mt-4 border-t border-neutral-800 pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-neutral-200">Execution Results</h3>
-              <button onClick={clearQuery} className="text-xs text-neutral-400 hover:text-white">Clear</button>
+        {/* Results / Visualizer / Metrics Panel */}
+        <div className="mt-4 pt-4 border-t border-neutral-800/50 pb-8">
+          {lastResult ? (
+            <div className="flex flex-col gap-6">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase">
+                  4. Query Result
+                </label>
+                <button onClick={clearQuery} className="text-[10px] uppercase tracking-wider text-neutral-500 hover:text-white transition-colors">Clear</button>
+              </div>
+              
+              <CityMetrics benchmark={lastResult} />
+              
+              <div className="mt-2">
+                <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase mb-3 block">
+                  5. How the Query was Executed
+                </label>
+                <BitmapQueryVisualizer />
+              </div>
             </div>
-            <CityMetrics benchmark={lastResult} />
-          </div>
-        )}
+          ) : (
+            <div className="p-6 flex flex-col items-center justify-center text-center bg-[#111115] border border-dashed border-neutral-800 rounded-lg h-48">
+              <div className="w-10 h-10 rounded-full bg-neutral-800/50 flex items-center justify-center mb-3">
+                <Sparkles className="w-5 h-5 text-neutral-500" />
+              </div>
+              <h3 className="text-sm font-semibold text-neutral-300">NO QUERY RUN</h3>
+              <p className="text-xs text-neutral-500 mt-2 max-w-[200px]">
+                Ask the city a question or choose a quick analysis to see results.
+              </p>
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
