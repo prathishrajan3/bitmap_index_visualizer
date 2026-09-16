@@ -16,11 +16,11 @@ export async function POST(req: Request) {
     const { summary } = await req.json();
 
     const userMessage = `You are a Smart City Data Analyst.
-Here are the most frequent attribute combinations currently active in the simulated city:
+Here is an exact combination of attributes that is guaranteed to exist right now in the simulated city:
 ${JSON.stringify(summary, null, 2)}
 
-Your task: Look at these high-count attributes and invent ONE natural language question that a city planner might ask to filter this data.
-The question MUST combine 2 or 3 of the attributes mentioned above (e.g., combining a specific district, a specific entity type, and a traffic or risk level).
+Your task: Invent ONE natural language question that a city planner might ask to filter for this exact data.
+The question MUST combine all the attributes mentioned above (e.g., combining the specific district, entity type, etc).
 The combination must make logical sense for a city planner (e.g., don't ask for "clear traffic and critical risk").
 Make the query read naturally, like a human typed it into a search box.
 CRITICAL: Vary your output! Do not always ask about the same district or entity. Be creative and pick different combinations of the provided attributes every time.

@@ -30,34 +30,31 @@ export default function CitySidebar() {
     setIsGeneratingQuery(true);
     setError(null);
     try {
-      // Basic frequency counting
-      const stats: Record<string, Record<string, number>> = {
-        entityType: {},
-        trafficLevel: {},
-        district: {},
-        riskLevel: {}
-      };
+      // To GUARANTEE matches, we must pick an actual combination that exists in the dataset.
+      // We will pick a random entity from the dataset, and extract 2 or 3 of its attributes.
+      const randomEntity = dataset[Math.floor(Math.random() * dataset.length)];
       
-      dataset.forEach(entity => {
-        stats.entityType[entity.entityType] = (stats.entityType[entity.entityType] || 0) + 1;
-        stats.trafficLevel[entity.trafficLevel] = (stats.trafficLevel[entity.trafficLevel] || 0) + 1;
-        stats.district[entity.district] = (stats.district[entity.district] || 0) + 1;
-        stats.riskLevel[entity.riskLevel] = (stats.riskLevel[entity.riskLevel] || 0) + 1;
-      });
+      const possibleAttributes = [
+        { key: 'district', value: randomEntity.district },
+        { key: 'entityType', value: randomEntity.entityType },
+        { key: 'trafficLevel', value: randomEntity.trafficLevel },
+        { key: 'riskLevel', value: randomEntity.riskLevel },
+      ];
+      
+      // Shuffle and pick 2 or 3 attributes to form a guaranteed query
+      const shuffledAttributes = possibleAttributes.sort(() => 0.5 - Math.random());
+      const numAttributesToPick = Math.random() > 0.5 ? 2 : 3;
+      const selectedAttributes = shuffledAttributes.slice(0, numAttributesToPick);
 
-      // Find top 5 for each, then randomly pick 2 to ensure query variety
-      const summary: Record<string, string[]> = {};
-      for (const [key, counts] of Object.entries(stats)) {
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const topN = sorted.slice(0, 5);
-        const shuffled = topN.sort(() => 0.5 - Math.random());
-        summary[key] = shuffled.slice(0, 2).map(([val, count]) => `${val} (${count})`);
-      }
+      const guaranteedCombination: Record<string, string> = {};
+      selectedAttributes.forEach(attr => {
+        guaranteedCombination[attr.key] = attr.value as string;
+      });
 
       const response = await fetch('/api/suggest-city-query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summary })
+        body: JSON.stringify({ summary: guaranteedCombination })
       });
 
       if (!response.ok) throw new Error('Failed to generate query');
