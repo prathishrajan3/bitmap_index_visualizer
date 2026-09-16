@@ -3,21 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useCityStore } from '@/store/useCityStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DISTRICTS } from '@/lib/city/cityGenerator';
+import { DISTRICTS, DISTRICT_PATHS } from '@/lib/city/cityGenerator';
 import { HelpCircle, Info } from 'lucide-react';
-
-const DISTRICT_PATHS = [
-  "M 30,30 L 60,25 L 75,50 L 55,75 L 25,60 Z", 
-  "M 60,25 L 85,15 L 100,40 L 75,50 Z", 
-  "M 55,75 L 75,50 L 95,70 L 70,95 Z", 
-  "M 75,50 L 100,40 L 115,65 L 95,70 Z", 
-  "M 15,45 L 30,30 L 25,60 L 10,75 Z", 
-  "M 100,40 L 130,30 L 140,55 L 115,65 Z", 
-  "M 25,60 L 55,75 L 45,100 L 15,90 Z", 
-  "M 70,95 L 95,70 L 110,90 L 80,110 Z", 
-  "M 15,90 L 45,100 L 60,120 L 25,115 Z", 
-  "M 115,65 L 140,55 L 150,80 L 125,95 Z" 
-];
 
 const SVG_VIEWBOX_WIDTH = 160;
 const SVG_VIEWBOX_HEIGHT = 130;

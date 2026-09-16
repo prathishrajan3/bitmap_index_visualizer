@@ -16,6 +16,19 @@ export const DISTRICTS: District[] = [
   'Medical District', 'Old Town', 'Airport Corridor'
 ];
 
+export const DISTRICT_PATHS = [
+  "M 30,30 L 60,25 L 75,50 L 55,75 L 25,60 Z", 
+  "M 60,25 L 85,15 L 100,40 L 75,50 Z", 
+  "M 55,75 L 75,50 L 95,70 L 70,95 Z", 
+  "M 75,50 L 100,40 L 115,65 L 95,70 Z", 
+  "M 15,45 L 30,30 L 25,60 L 10,75 Z", 
+  "M 100,40 L 130,30 L 140,55 L 115,65 Z", 
+  "M 25,60 L 55,75 L 45,100 L 15,90 Z", 
+  "M 70,95 L 95,70 L 110,90 L 80,110 Z", 
+  "M 15,90 L 45,100 L 60,120 L 25,115 Z", 
+  "M 115,65 L 140,55 L 150,80 L 125,95 Z" 
+];
+
 const ENTITY_TYPES: EntityType[] = ['Intersection', 'Road', 'Bus', 'EmergencyVehicle', 'Hospital', 'School', 'PowerSubstation', 'WaterFacility', 'PollutionSensor', 'PublicSafetyZone', 'ParkingZone'];
 const WEATHER_TYPES: Weather[] = ['Clear', 'Cloudy', 'Rain', 'Storm'];
 const ROAD_TYPES: RoadType[] = ['Arterial', 'Highway', 'Residential', 'Commercial'];
@@ -42,33 +55,60 @@ function pickWeighted<T>(weights: [T, number][], rng: () => number): T {
   return weights[0][0];
 }
 
+function parsePolygon(path: string): {x: number, y: number}[] {
+  const points = [];
+  const regex = /[ML]\s*([\d.]+),([\d.]+)/g;
+  let match;
+  while ((match = regex.exec(path)) !== null) {
+    points.push({ x: parseFloat(match[1]), y: parseFloat(match[2]) });
+  }
+  return points;
+}
+
+function getBoundingBox(polygon: {x: number, y: number}[]) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of polygon) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
+function isPointInPolygon(x: number, y: number, polygon: {x: number, y: number}[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 export function generateCityData(config: GeneratorConfig): CityEntity[] {
   const rng = mulberry32(config.seed);
   const entities: CityEntity[] = [];
 
-  // Approximate bounds (minX, maxX, minY, maxY) mapped to DISTRICTS array
-  // corresponding to the SVG paths drawn in CityMap.tsx
-  const districtBounds = [
-    [35, 65, 35, 65],   // Central Business District
-    [70, 90, 25, 40],   // North Industrial Zone
-    [65, 85, 60, 85],   // South Residential Zone
-    [85, 105, 50, 60],  // East Transit Hub
-    [15, 25, 45, 60],   // West Technology Park
-    [110, 130, 40, 55], // Riverside
-    [25, 45, 75, 90],   // University District
-    [80, 100, 80, 100], // Medical District
-    [25, 50, 100, 115], // Old Town
-    [125, 140, 65, 85]  // Airport Corridor
-  ];
+  const districtPolygons = DISTRICT_PATHS.map(parsePolygon);
+  const districtBounds = districtPolygons.map(getBoundingBox);
 
   for (let i = 0; i < config.count; i++) {
     const district = pickRandom(DISTRICTS, rng);
     const districtIndex = DISTRICTS.indexOf(district);
     
-    // Generate coordinates within the district's approximate bounds
+    const poly = districtPolygons[districtIndex];
     const bounds = districtBounds[districtIndex];
-    const baseX = bounds[0] + rng() * (bounds[1] - bounds[0]);
-    const baseY = bounds[2] + rng() * (bounds[3] - bounds[2]);
+    let baseX = 0, baseY = 0;
+    
+    // Rejection sampling to ensure uniform distribution within the polygon
+    let attempts = 0;
+    do {
+      baseX = bounds.minX + rng() * (bounds.maxX - bounds.minX);
+      baseY = bounds.minY + rng() * (bounds.maxY - bounds.minY);
+      attempts++;
+    } while (!isPointInPolygon(baseX, baseY, poly) && attempts < 100);
 
     const entityType = pickWeighted([
       ['Intersection', 30], ['Road', 40], ['Bus', 5], ['EmergencyVehicle', 2], 
