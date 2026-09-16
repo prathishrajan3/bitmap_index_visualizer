@@ -141,6 +141,24 @@ export function parseAICityQuery(aiQuery: any, validFields: Set<string>): CityQu
     throw new Error("Invalid AI Query structure");
   }
 
+  // First check if it's a leaf node (predicate)
+  if (aiQuery.column && aiQuery.value !== undefined) {
+    if (!validFields.has(aiQuery.column)) {
+      throw new Error(`Invalid column: ${aiQuery.column}`);
+    }
+    const op = aiQuery.operator || '=';
+    if (op !== '=' && op !== '!=') {
+      throw new Error(`Invalid predicate operator: ${op}`);
+    }
+    return {
+      type: 'predicate',
+      column: aiQuery.column as any,
+      operator: op as any,
+      value: String(aiQuery.value)
+    };
+  }
+
+  // Otherwise it must be a logical node
   if (aiQuery.operator) {
     if (aiQuery.operator === 'NOT') {
       if (!Array.isArray(aiQuery.conditions) || aiQuery.conditions.length !== 1) {
@@ -170,22 +188,6 @@ export function parseAICityQuery(aiQuery: any, validFields: Set<string>): CityQu
       return rootNode;
     }
     throw new Error(`Unknown operator: ${aiQuery.operator}`);
-  }
-
-  if (aiQuery.column && aiQuery.value) {
-    if (!validFields.has(aiQuery.column)) {
-      throw new Error(`Invalid column: ${aiQuery.column}`);
-    }
-    const op = aiQuery.operator || '=';
-    if (op !== '=' && op !== '!=') {
-      throw new Error(`Invalid predicate operator: ${op}`);
-    }
-    return {
-      type: 'predicate',
-      column: aiQuery.column as any,
-      operator: op as any,
-      value: String(aiQuery.value)
-    };
   }
 
   throw new Error("Could not parse query node");
