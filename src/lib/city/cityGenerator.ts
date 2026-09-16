@@ -46,13 +46,29 @@ export function generateCityData(config: GeneratorConfig): CityEntity[] {
   const rng = mulberry32(config.seed);
   const entities: CityEntity[] = [];
 
+  // Approximate bounds (minX, maxX, minY, maxY) mapped to DISTRICTS array
+  // corresponding to the SVG paths drawn in CityMap.tsx
+  const districtBounds = [
+    [35, 65, 35, 65],   // Central Business District
+    [70, 90, 25, 40],   // North Industrial Zone
+    [65, 85, 60, 85],   // South Residential Zone
+    [85, 105, 50, 60],  // East Transit Hub
+    [15, 25, 45, 60],   // West Technology Park
+    [110, 130, 40, 55], // Riverside
+    [25, 45, 75, 90],   // University District
+    [80, 100, 80, 100], // Medical District
+    [25, 50, 100, 115], // Old Town
+    [125, 140, 65, 85]  // Airport Corridor
+  ];
+
   for (let i = 0; i < config.count; i++) {
     const district = pickRandom(DISTRICTS, rng);
-    
-    // Abstract coordinates based on district logic for clustering
     const districtIndex = DISTRICTS.indexOf(district);
-    const baseX = (districtIndex % 3) * 33 + rng() * 30; // 0-100 scale roughly
-    const baseY = Math.floor(districtIndex / 3) * 25 + rng() * 20;
+    
+    // Generate coordinates within the district's approximate bounds
+    const bounds = districtBounds[districtIndex];
+    const baseX = bounds[0] + rng() * (bounds[1] - bounds[0]);
+    const baseY = bounds[2] + rng() * (bounds[3] - bounds[2]);
 
     const entityType = pickWeighted([
       ['Intersection', 30], ['Road', 40], ['Bus', 5], ['EmergencyVehicle', 2], 
