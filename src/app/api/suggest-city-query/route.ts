@@ -23,6 +23,7 @@ Your task: Look at these high-count attributes and invent ONE natural language q
 The question MUST combine 2 or 3 of the attributes mentioned above (e.g., combining a specific district, a specific entity type, and a traffic or risk level).
 The combination must make logical sense for a city planner (e.g., don't ask for "clear traffic and critical risk").
 Make the query read naturally, like a human typed it into a search box.
+CRITICAL: Vary your output! Do not always ask about the same district or entity. Be creative and pick different combinations of the provided attributes every time.
 
 Examples of good queries:
 "Find all hospitals in the Medical District that have critical risk"
@@ -34,10 +35,10 @@ DO NOT output any explanation, markdown, or JSON. Just output the raw natural la
     const response = await openai.chat.completions.create({
       model: 'gpt-5.4-mini-2026-03-17',
       messages: [
-        { role: 'system', content: 'You only output a single natural language query.' },
+        { role: 'system', content: 'You only output a single natural language query. Be highly creative and vary the combinations.' },
         { role: 'user', content: userMessage }
       ],
-      temperature: 0.7,
+      temperature: 1.0,
     });
 
     const query = response.choices[0].message.content?.replace(/^["']|["']$/g, '').trim() || "Find intersections with severe traffic";

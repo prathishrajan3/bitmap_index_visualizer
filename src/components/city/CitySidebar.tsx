@@ -45,11 +45,13 @@ export default function CitySidebar() {
         stats.riskLevel[entity.riskLevel] = (stats.riskLevel[entity.riskLevel] || 0) + 1;
       });
 
-      // Find top 2 for each
+      // Find top 5 for each, then randomly pick 2 to ensure query variety
       const summary: Record<string, string[]> = {};
       for (const [key, counts] of Object.entries(stats)) {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        summary[key] = sorted.slice(0, 2).map(([val, count]) => `${val} (${count})`);
+        const topN = sorted.slice(0, 5);
+        const shuffled = topN.sort(() => 0.5 - Math.random());
+        summary[key] = shuffled.slice(0, 2).map(([val, count]) => `${val} (${count})`);
       }
 
       const response = await fetch('/api/suggest-city-query', {
