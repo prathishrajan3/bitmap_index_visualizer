@@ -15,6 +15,7 @@ export default function CitySidebar() {
   const { dataset, bitmapIndex, setActiveQuery, heatmapMode, setHeatmapMode } = useCityStore();
   const [nlQuery, setNlQuery] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isGeneratingQuery, setIsGeneratingQuery] = useState(false);
   const [executionStage, setExecutionStage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<CityBenchmarkComparison | null>(null);
@@ -23,6 +24,51 @@ export default function CitySidebar() {
     const ast = PRESET_QUERIES[presetName];
     if (!ast) return;
     executeAST(ast);
+  };
+
+  const handleGenerateSmartQuery = async () => {
+    setIsGeneratingQuery(true);
+    setError(null);
+    try {
+      // Basic frequency counting
+      const stats: Record<string, Record<string, number>> = {
+        entityType: {},
+        trafficLevel: {},
+        district: {},
+        riskLevel: {}
+      };
+      
+      dataset.forEach(entity => {
+        stats.entityType[entity.entityType] = (stats.entityType[entity.entityType] || 0) + 1;
+        stats.trafficLevel[entity.trafficLevel] = (stats.trafficLevel[entity.trafficLevel] || 0) + 1;
+        stats.district[entity.district] = (stats.district[entity.district] || 0) + 1;
+        stats.riskLevel[entity.riskLevel] = (stats.riskLevel[entity.riskLevel] || 0) + 1;
+      });
+
+      // Find top 2 for each
+      const summary: Record<string, string[]> = {};
+      for (const [key, counts] of Object.entries(stats)) {
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        summary[key] = sorted.slice(0, 2).map(([val, count]) => `${val} (${count})`);
+      }
+
+      const response = await fetch('/api/suggest-city-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary })
+      });
+
+      if (!response.ok) throw new Error('Failed to generate query');
+      
+      const data = await response.json();
+      setNlQuery(data.query || '');
+      
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to generate smart query.");
+    } finally {
+      setIsGeneratingQuery(false);
+    }
   };
 
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -151,6 +197,24 @@ export default function CitySidebar() {
               <>
                 <Sparkles className="w-4 h-4" />
                 <span className="text-xs font-bold uppercase tracking-wider">Analyze City</span>
+              </>
+            )}
+          </button>
+
+          <button 
+            onClick={handleGenerateSmartQuery}
+            disabled={isGeneratingQuery || isExecuting}
+            className="w-full mt-2 flex items-center justify-center gap-2 py-2 bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 hover:text-white rounded-md transition-colors disabled:opacity-50"
+          >
+            {isGeneratingQuery ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-neutral-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-semibold uppercase">Thinking...</span>
+              </>
+            ) : (
+              <>
+                <Database className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Generate Smart Query</span>
               </>
             )}
           </button>
