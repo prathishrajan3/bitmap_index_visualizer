@@ -14,16 +14,17 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { schemaContext, prompt, datasetSample, mode, allowedColumns } = body;
+    const { schemaContext, prompt, datasetSample, mode, allowedColumns, allowedValues } = body;
 
     if (mode === 'city') {
       const userMessage = `You are an AI that translates natural language queries into a strict JSON AST for a Smart City Digital Twin.
-Allowed Columns: ${JSON.stringify(allowedColumns)}
+Allowed Columns and their Exact Expected Values: ${JSON.stringify(allowedValues)}
 Operators for logical: AND, OR, NOT.
 Operators for predicate: =, !=
 Predicate Format: { "column": "...", "operator": "=", "value": "..." }
 Logical Format: { "operator": "AND", "conditions": [...] }
 You MUST output ONLY valid JSON. Do not use markdown blocks, backticks, or conversational text.
+CRITICAL: When generating a predicate, the "value" MUST EXACTLY MATCH one of the allowed strings provided above (case-sensitive). Do not guess values.
 
 User Query: "${prompt}"`;
 

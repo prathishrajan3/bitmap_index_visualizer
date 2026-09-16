@@ -83,6 +83,13 @@ export default function CitySidebar() {
       await delay(400); // small delay to make the first state visible
       setExecutionStage('Building Bitmap query...');
       
+      // Extract unique values to force the LLM to use exact enums (e.g. "Road" instead of "roads")
+      const allowedValues: Record<string, string[]> = {};
+      INDEXED_CITY_FIELDS.forEach(col => {
+        const unique = new Set(dataset.map((d: any) => String(d[col])));
+        allowedValues[col] = Array.from(unique);
+      });
+
       const response = await fetch('/api/generate-query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +97,8 @@ export default function CitySidebar() {
           prompt: nlQuery, 
           domain: 'city',
           mode: 'city',
-          allowedColumns: INDEXED_CITY_FIELDS
+          allowedColumns: INDEXED_CITY_FIELDS,
+          allowedValues
         }),
       });
 
