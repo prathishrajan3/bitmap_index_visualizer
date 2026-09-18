@@ -7,13 +7,19 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
+
     if (!process.env.OPENAI_API_KEY) {
+      if (body.mode === 'city') {
+        return NextResponse.json({ 
+          query: { type: 'predicate', column: 'trafficLevel', operator: '=', value: 'Severe' }
+        });
+      }
       return NextResponse.json({ 
         query: "SELECT * FROM DatasetRow;" // Fallback if no API key
       });
     }
 
-    const body = await req.json();
     const { schemaContext, prompt, datasetSample, mode, allowedColumns, allowedValues } = body;
 
     if (mode === 'city') {
