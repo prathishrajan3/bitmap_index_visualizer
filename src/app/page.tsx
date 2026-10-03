@@ -13,12 +13,13 @@ import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompareLab } from '@/components/compare/CompareLab';
 import { Introduction } from '@/components/learning/Introduction';
-import { BookOpen, User, HelpCircle } from 'lucide-react';
+import { BookOpen, User, HelpCircle, Brain } from 'lucide-react';
 import { DeveloperInfo } from '@/components/about/DeveloperInfo';
 import { HelpManual } from '@/components/help/HelpManual';
 import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
-type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare' | 'Help' | 'Developed By';
+import { QuizApp } from '@/components/quiz/QuizApp';
+type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare' | 'Quiz' | 'Help' | 'Developed By';
 
 
 export default function LaboratoryDashboard() {
@@ -435,6 +436,7 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
             <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <TabBtn icon={<Brain className="w-4 h-4 shrink-0"/>} label="Quiz" active={activeTab==='Quiz'} onClick={() => setActiveTab('Quiz')} />
             <TabBtn icon={<HelpCircle className="w-4 h-4 shrink-0"/>} label="Help" active={activeTab==='Help'} onClick={() => setActiveTab('Help')} />
             <TabBtn icon={<User className="w-4 h-4 shrink-0"/>} label="Developed By" active={activeTab==='Developed By'} onClick={() => setActiveTab('Developed By')} />
           </div>
@@ -444,6 +446,12 @@ export default function LaboratoryDashboard() {
             {activeTab === 'Intro' && (
               <div className="h-full">
                 <Introduction />
+              </div>
+            )}
+
+            {activeTab === 'Quiz' && (
+              <div className="h-full overflow-y-auto">
+                <QuizApp />
               </div>
             )}
 
