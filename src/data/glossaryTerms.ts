@@ -154,7 +154,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     relatedTerms: ['sparse-bitmap', 'dense-bitmap', 'run-length-encoding', 'compression-ratio'],
     usedIn: ['Compression'],
     interactiveExampleType: 'Density',
-    route: 'Compression'
+    route: 'Matrix'
   },
   {
     id: 'bitwise-and',
@@ -226,7 +226,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     usedIn: ['Compression'],
     realWorldContext: 'Modern databases like Oracle and Postgres (via extensions) use advanced variants of RLE like WAH or Roaring Bitmaps to compress indexes.',
     interactiveExampleType: 'RLE',
-    route: 'Compression'
+    route: 'Matrix'
   },
   {
     id: 'compression-ratio',
@@ -242,7 +242,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     whyItMatters: 'A higher compression ratio means less disk I/O to read the index into memory, which is a primary performance bottleneck in databases.',
     relatedTerms: ['run-length-encoding', 'density'],
     usedIn: ['Compression'],
-    route: 'Compression'
+    route: 'Matrix'
   },
   {
     id: 'table-scan',
@@ -343,7 +343,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     technicalExplanation: 'A bitmap with low density. Sparse bitmaps compress extremely well using Run-Length Encoding because they contain massive contiguous runs of zeros.',
     relatedTerms: ['dense-bitmap', 'density', 'run-length-encoding'],
     usedIn: ['Compression'],
-    route: 'Compression'
+    route: 'Matrix'
   },
   {
     id: 'dense-bitmap',
@@ -357,7 +357,7 @@ export const glossaryTerms: GlossaryTerm[] = [
     technicalExplanation: 'A bitmap with high density. Like sparse bitmaps, highly dense bitmaps compress very well because they contain long runs of ones.',
     relatedTerms: ['sparse-bitmap', 'density', 'run-length-encoding'],
     usedIn: ['Compression'],
-    route: 'Compression'
+    route: 'Matrix'
   },
   {
     id: 'row-id',

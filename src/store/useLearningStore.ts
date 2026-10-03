@@ -24,7 +24,6 @@ const INITIAL_MODULES = {
   'intro': { id: 'intro', title: 'Introduction to Indexes', completed: false, score: 0 },
   'construction': { id: 'construction', title: 'Bitmap Construction', completed: false, score: 0 },
   'algebra': { id: 'algebra', title: 'Bitmap Algebra', completed: false, score: 0 },
-  'compression': { id: 'compression', title: 'Data Compression', completed: false, score: 0 },
   'execution': { id: 'execution', title: 'Query Execution', completed: false, score: 0 }
 };
 
@@ -68,7 +67,6 @@ export const useLearningStore = create<LearningState>()(
             'intro': { id: 'intro', title: 'Introduction to Indexes', completed: false, score: 0 },
             'construction': { id: 'construction', title: 'Bitmap Construction', completed: false, score: 0 },
             'algebra': { id: 'algebra', title: 'Bitmap Algebra', completed: false, score: 0 },
-            'compression': { id: 'compression', title: 'Data Compression', completed: false, score: 0 },
             'execution': { id: 'execution', title: 'Query Execution', completed: false, score: 0 }
           },
           currentModuleId: null,

@@ -13,7 +13,6 @@ export function LearningJourney({ onNavigate }: { onNavigate: (tab: string) => v
       'intro': 'Dataset',
       'construction': 'Builder',
       'algebra': 'Algebra',
-      'compression': 'Compression',
       'execution': 'Query'
     };
     

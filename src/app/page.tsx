@@ -11,11 +11,10 @@ import { buildDatasetBitmapIndex, Bitmap } from '@/lib/bitmap';
 import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
 import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
-import { CompressionLab } from '@/components/bitmap/CompressionLab';
 import { CompareLab } from '@/components/compare/CompareLab';
 import { LearningJourney } from '@/components/learning/LearningJourney';
 import { BookOpen } from 'lucide-react';
-type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Compression' | 'Query' | 'Journey' | 'Compare';
+type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Journey' | 'Compare';
 
 
 export default function LaboratoryDashboard() {
@@ -428,7 +427,6 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="Builder" active={activeTab==='Builder'} onClick={() => setActiveTab('Builder')} />
             <TabBtn icon={<LayoutGrid className="w-4 h-4 shrink-0"/>} label="Matrix" active={activeTab==='Matrix'} onClick={() => setActiveTab('Matrix')} />
             <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
-            <TabBtn icon={<FileArchive className="w-4 h-4 shrink-0"/>} label="Compression" active={activeTab==='Compression'} onClick={() => setActiveTab('Compression')} />
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
           </div>
 
@@ -593,21 +591,6 @@ export default function LaboratoryDashboard() {
               </div>
             )}
 
-            {activeTab === 'Compression' && (
-              <div className="h-full flex flex-col">
-                <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><FileArchive className="w-5 h-5 text-blue-400"/> Compression Laboratory</h2>
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-                  {allBitmaps.length > 0 ? (
-                    <CompressionLab availableBitmaps={allBitmaps} />
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
-                      <p>Please build the bitmap indexes in the Builder tab first.</p>
-                    </div>
-                  )}
-                </div>
-                {renderMarkComplete('compression')}
-              </div>
-            )}
 
             {activeTab === 'Query' && (
               <div className="h-full">
