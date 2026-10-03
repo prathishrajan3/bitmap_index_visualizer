@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LayoutGrid, FlaskConical } from 'lucide-react';
+import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
 
 export default function CityHeader() {
   return (
@@ -41,6 +42,8 @@ export default function CityHeader() {
         </div>
 
         <div className="h-6 w-px bg-neutral-800"></div>
+
+        <DownloadReportBtn type="city" />
 
         <Link 
           href="/" 
