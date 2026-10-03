@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { LayoutGrid, FlaskConical } from 'lucide-react';
 import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 export default function CityHeader() {
   return (
@@ -43,6 +44,7 @@ export default function CityHeader() {
 
         <div className="h-6 w-px bg-neutral-800"></div>
 
+        <ThemeToggle />
         <DownloadReportBtn type="city" />
 
         <Link 

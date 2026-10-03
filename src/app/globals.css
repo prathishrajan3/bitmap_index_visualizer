@@ -34,3 +34,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Day Mode Implementation */
+html.light-mode {
+  filter: invert(1) hue-rotate(180deg);
+  background: white;
+}
+
+html.light-mode img,
+html.light-mode video {
+  filter: invert(1) hue-rotate(180deg);
+}

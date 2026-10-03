@@ -17,6 +17,7 @@ import { BookOpen, User, HelpCircle } from 'lucide-react';
 import { DeveloperInfo } from '@/components/about/DeveloperInfo';
 import { HelpManual } from '@/components/help/HelpManual';
 import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare' | 'Help' | 'Developed By';
 
 
@@ -279,6 +280,7 @@ export default function LaboratoryDashboard() {
           </h1>
         </div>
         <div className="flex gap-4 items-center">
+          <ThemeToggle />
           <DownloadReportBtn type="lab" />
           <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
             <GitCompare className="w-4 h-4" /> Compare
