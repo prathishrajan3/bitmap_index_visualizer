@@ -15,12 +15,16 @@ interface CityState {
   
   // UI & Query
   selectedEntityId: string | null;
+  selectedDistrict: string | null;
   activeQuery: CityQueryNode | null;
   queryResultEntityIds: Set<string>;
   heatmapMode: 'None' | 'Traffic' | 'Pollution' | 'Emergency' | 'Risk';
   demoMode: boolean;
   educationalMode: boolean;
   
+  // Benchmark
+  lastBenchmarkResult: any | null;
+
   // Actions
   setDataset: (data: CityEntity[], index: CityBitmapIndex) => void;
   setSimulationRunning: (running: boolean) => void;
@@ -29,10 +33,12 @@ interface CityState {
   setTimeOfDay: (time: 'Morning' | 'Afternoon' | 'Evening' | 'Night') => void;
   setWeather: (weather: 'Clear' | 'Cloudy' | 'Rain' | 'Storm') => void;
   setSelectedEntityId: (id: string | null) => void;
+  setSelectedDistrict: (district: string | null) => void;
   setActiveQuery: (query: CityQueryNode | null, resultIds: Set<string>) => void;
   setHeatmapMode: (mode: 'None' | 'Traffic' | 'Pollution' | 'Emergency' | 'Risk') => void;
   setDemoMode: (active: boolean) => void;
   setEducationalMode: (active: boolean) => void;
+  setLastBenchmarkResult: (result: any | null) => void;
 }
 
 export const useCityStore = create<CityState>((set) => ({
@@ -46,11 +52,14 @@ export const useCityStore = create<CityState>((set) => ({
   weather: 'Clear',
   
   selectedEntityId: null,
+  selectedDistrict: null,
   activeQuery: null,
   queryResultEntityIds: new Set(),
   heatmapMode: 'None',
   demoMode: false,
   educationalMode: false,
+  
+  lastBenchmarkResult: null,
   
   setDataset: (data, index) => set({ dataset: data, bitmapIndex: index }),
   setSimulationRunning: (running) => set({ simulationRunning: running }),
@@ -63,4 +72,6 @@ export const useCityStore = create<CityState>((set) => ({
   setHeatmapMode: (mode) => set({ heatmapMode: mode }),
   setDemoMode: (active) => set({ demoMode: active }),
   setEducationalMode: (active) => set({ educationalMode: active }),
+  setSelectedDistrict: (district) => set({ selectedDistrict: district }),
+  setLastBenchmarkResult: (result) => set({ lastBenchmarkResult: result })
 }));

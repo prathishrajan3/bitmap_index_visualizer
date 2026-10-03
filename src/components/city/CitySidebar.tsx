@@ -4,21 +4,27 @@ import { useState } from 'react';
 import { useCityStore } from '@/store/useCityStore';
 import { Play, Sparkles, AlertTriangle, Activity, Database, Clock, Zap } from 'lucide-react';
 import { executeCityQuery, parseAICityQuery, CityExecutionResult } from '@/lib/city/cityQueries';
-import { benchmarkCityQuery, CityBenchmarkComparison } from '@/lib/city/cityStatistics';
+import { runRepeatedCityBenchmark, CityBenchmarkStatistics } from '@/lib/city/cityStatistics';
 import { PRESET_QUERIES } from '@/lib/city/cityScenarios';
 import { INDEXED_CITY_FIELDS } from '@/lib/city/cityBitmapEngine';
-import CityMetrics from './CityMetrics';
 import BitmapQueryVisualizer from './BitmapQueryVisualizer';
 import CityTooltip from './ui/CityTooltip';
+import { CityIssueScanner } from './CityIssueScanner';
+import { CityIssueOverview } from './CityIssueOverview';
+import { CityBenchmarkLab } from './CityBenchmarkLab';
+import { CityScalingBenchmark } from './CityScalingBenchmark';
+
+type SidebarTab = 'AI Query' | 'Performance Lab';
 
 export default function CitySidebar() {
-  const { dataset, bitmapIndex, setActiveQuery, heatmapMode, setHeatmapMode } = useCityStore();
+  const { dataset, bitmapIndex, setActiveQuery, heatmapMode, setHeatmapMode, lastBenchmarkResult, setLastBenchmarkResult } = useCityStore();
   const [nlQuery, setNlQuery] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [isGeneratingQuery, setIsGeneratingQuery] = useState(false);
   const [executionStage, setExecutionStage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<CityBenchmarkComparison | null>(null);
+  
+  const [activeTab, setActiveTab] = useState<SidebarTab>('Performance Lab');
 
   const handleExecutePreset = (presetName: string) => {
     const ast = PRESET_QUERIES[presetName];
@@ -126,14 +132,13 @@ export default function CitySidebar() {
       const datasetIds = dataset.map(e => e.id);
       // Run bitmap engine
       const bitmapRes = executeCityQuery(ast, bitmapIndex, dataset.length, datasetIds);
-      
       // Run benchmark
-      const benchmark = benchmarkCityQuery(ast, dataset, bitmapRes);
+      const benchmark = runRepeatedCityBenchmark(ast, dataset, bitmapIndex);
       
       const resultIds = new Set(bitmapRes.matchingIds);
       
       setActiveQuery(ast, resultIds);
-      setLastResult(benchmark);
+      setLastBenchmarkResult(benchmark);
       setError(null);
     } catch (err: any) {
       console.error(err);
@@ -143,24 +148,41 @@ export default function CitySidebar() {
 
   const clearQuery = () => {
     setActiveQuery(null, new Set());
-    setLastResult(null);
+    setLastBenchmarkResult(null);
     setNlQuery('');
     setError(null);
   };
 
   return (
     <div className="flex flex-col h-full bg-[#0d0d0f] border-l border-neutral-800 text-sm">
-      <div className="p-4 border-b border-neutral-800">
-        <h2 className="font-semibold flex items-center gap-2 text-emerald-400">
-          <Database className="w-4 h-4" />
-          City Query Engine
-        </h2>
-        <p className="text-xs text-neutral-400 mt-1">
-          Execute Boolean logic against {dataset.length.toLocaleString()} entities.
-        </p>
+      <div className="flex border-b border-neutral-800">
+        <button 
+          onClick={() => setActiveTab('Performance Lab')}
+          className={`flex-1 py-3 text-[11px] font-bold tracking-widest uppercase transition-colors ${activeTab === 'Performance Lab' ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5' : 'text-neutral-500 hover:text-neutral-300'}`}
+        >
+          Performance Lab
+        </button>
+        <div className="w-px bg-neutral-800" />
+        <button 
+          onClick={() => setActiveTab('AI Query')}
+          className={`flex-1 py-3 text-[11px] font-bold tracking-widest uppercase transition-colors ${activeTab === 'AI Query' ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5' : 'text-neutral-500 hover:text-neutral-300'}`}
+        >
+          AI Query
+        </button>
       </div>
 
-      <div className="p-4 flex flex-col gap-4 overflow-y-auto flex-1">
+      <div className="flex flex-col overflow-y-auto flex-1">
+        {activeTab === 'Performance Lab' && (
+          <div className="flex flex-col h-full">
+            <CityIssueScanner />
+            <CityIssueOverview />
+            <CityBenchmarkLab />
+            <CityScalingBenchmark />
+          </div>
+        )}
+
+        {activeTab === 'AI Query' && (
+          <div className="p-4 flex flex-col gap-4">
         
         {/* Natural Language Input */}
         <div className="flex flex-col gap-3">
@@ -291,7 +313,7 @@ export default function CitySidebar() {
 
         {/* Results / Visualizer / Metrics Panel */}
         <div className="mt-4 pt-4 border-t border-neutral-800/50 pb-8">
-          {lastResult ? (
+          {lastBenchmarkResult ? (
             <div className="flex flex-col gap-6">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase">
@@ -299,8 +321,6 @@ export default function CitySidebar() {
                 </label>
                 <button onClick={clearQuery} className="text-[10px] uppercase tracking-wider text-neutral-500 hover:text-white transition-colors">Clear</button>
               </div>
-              
-              <CityMetrics benchmark={lastResult} />
               
               <div className="mt-2">
                 <label className="text-[11px] font-bold tracking-widest text-neutral-400 uppercase mb-3 block">
@@ -321,8 +341,11 @@ export default function CitySidebar() {
             </div>
           )}
         </div>
-
+        
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
