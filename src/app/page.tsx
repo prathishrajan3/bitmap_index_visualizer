@@ -13,8 +13,9 @@ import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompareLab } from '@/components/compare/CompareLab';
 import { Introduction } from '@/components/learning/Introduction';
-import { BookOpen } from 'lucide-react';
-type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare';
+import { BookOpen, User } from 'lucide-react';
+import { DeveloperInfo } from '@/components/about/DeveloperInfo';
+type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare' | 'Developed By';
 
 
 export default function LaboratoryDashboard() {
@@ -428,6 +429,8 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<LayoutGrid className="w-4 h-4 shrink-0"/>} label="Matrix" active={activeTab==='Matrix'} onClick={() => setActiveTab('Matrix')} />
             <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
+            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <TabBtn icon={<User className="w-4 h-4 shrink-0"/>} label="Developed By" active={activeTab==='Developed By'} onClick={() => setActiveTab('Developed By')} />
           </div>
 
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
@@ -435,6 +438,12 @@ export default function LaboratoryDashboard() {
             {activeTab === 'Intro' && (
               <div className="h-full">
                 <Introduction />
+              </div>
+            )}
+
+            {activeTab === 'Developed By' && (
+              <div className="h-full overflow-y-auto">
+                <DeveloperInfo />
               </div>
             )}
 
