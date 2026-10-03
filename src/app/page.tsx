@@ -427,15 +427,15 @@ export default function LaboratoryDashboard() {
         <main className="flex-1 flex flex-col overflow-hidden bg-neutral-950">
           
           {/* Tab Bar */}
-          <div className="flex bg-neutral-900/50 border-b border-neutral-800 p-2 gap-2 overflow-x-auto shrink-0 flex-nowrap custom-scrollbar">
+          <div className="flex bg-[#0a0a0c] border-b border-neutral-800 px-4 pt-2 gap-1 overflow-x-auto shrink-0 flex-nowrap custom-scrollbar scroll-smooth">
             <TabBtn icon={<BookOpen className="w-4 h-4 shrink-0"/>} label="Introduction" active={activeTab==='Intro'} onClick={() => setActiveTab('Intro')} />
-            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <div className="w-px bg-neutral-800 mx-1 my-2 shrink-0"></div>
             <TabBtn icon={<Table2 className="w-4 h-4 shrink-0"/>} label="Dataset" active={activeTab==='Dataset'} onClick={() => setActiveTab('Dataset')} />
             <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="Builder" active={activeTab==='Builder'} onClick={() => setActiveTab('Builder')} />
             <TabBtn icon={<LayoutGrid className="w-4 h-4 shrink-0"/>} label="Matrix" active={activeTab==='Matrix'} onClick={() => setActiveTab('Matrix')} />
             <TabBtn icon={<Calculator className="w-4 h-4 shrink-0"/>} label="Algebra" active={activeTab==='Algebra'} onClick={() => setActiveTab('Algebra')} />
             <TabBtn icon={<Terminal className="w-4 h-4 shrink-0"/>} label="Neon Query" active={activeTab==='Query'} onClick={() => setActiveTab('Query')} />
-            <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
+            <div className="w-px bg-neutral-800 mx-1 my-2 shrink-0"></div>
             <TabBtn icon={<Brain className="w-4 h-4 shrink-0"/>} label="Quiz" active={activeTab==='Quiz'} onClick={() => setActiveTab('Quiz')} />
             <TabBtn icon={<HelpCircle className="w-4 h-4 shrink-0"/>} label="Help" active={activeTab==='Help'} onClick={() => setActiveTab('Help')} />
             <TabBtn icon={<User className="w-4 h-4 shrink-0"/>} label="Developed By" active={activeTab==='Developed By'} onClick={() => setActiveTab('Developed By')} />
@@ -796,11 +796,14 @@ function TabBtn({ icon, label, active, onClick }: { icon: React.ReactNode, label
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded text-sm transition-colors whitespace-nowrap
-        ${active ? 'bg-neutral-800 text-white font-medium' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'}
+      className={`relative flex items-center gap-2 px-3 py-2.5 text-[13px] transition-colors whitespace-nowrap outline-none
+        ${active ? 'text-white font-semibold' : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/30 rounded-t-lg'}
       `}
     >
       {icon} {label}
+      {active && (
+        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-blue-500 rounded-t-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+      )}
     </button>
   );
 }
