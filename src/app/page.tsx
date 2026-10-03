@@ -12,9 +12,9 @@ import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
 import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
 import { CompareLab } from '@/components/compare/CompareLab';
-import { LearningJourney } from '@/components/learning/LearningJourney';
+import { Introduction } from '@/components/learning/Introduction';
 import { BookOpen } from 'lucide-react';
-type Tab = 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Journey' | 'Compare';
+type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare';
 
 
 export default function LaboratoryDashboard() {
@@ -23,7 +23,7 @@ export default function LaboratoryDashboard() {
   const { currentModuleId, completeModule, modules } = useLearningStore();
   
   // Local UI State
-  const [activeTab, setActiveTab] = useState<Tab>('Journey');
+  const [activeTab, setActiveTab] = useState<Tab>('Intro');
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const [activeValue, setActiveValue] = useState<{col: string, val: string} | null>(null);
   const [explanation, setExplanation] = useState<string>("Configure your experiment and click Generate Data.");
@@ -244,7 +244,7 @@ export default function LaboratoryDashboard() {
           onClick={() => {
             completeModule(moduleId, 100);
             setExplanation(`Excellent! You have mastered the ${mod.title} module.`);
-            setActiveTab('Journey');
+            setActiveTab('Intro');
           }}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-full flex items-center gap-2 font-bold transition-transform hover:scale-105 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
         >
@@ -421,7 +421,7 @@ export default function LaboratoryDashboard() {
           
           {/* Tab Bar */}
           <div className="flex bg-neutral-900/50 border-b border-neutral-800 p-2 gap-2 overflow-x-auto shrink-0 flex-nowrap custom-scrollbar">
-            <TabBtn icon={<GraduationCap className="w-4 h-4 shrink-0"/>} label="Journey" active={activeTab==='Journey'} onClick={() => setActiveTab('Journey')} />
+            <TabBtn icon={<BookOpen className="w-4 h-4 shrink-0"/>} label="Introduction" active={activeTab==='Intro'} onClick={() => setActiveTab('Intro')} />
             <div className="w-px bg-neutral-800 mx-2 shrink-0"></div>
             <TabBtn icon={<Table2 className="w-4 h-4 shrink-0"/>} label="Dataset" active={activeTab==='Dataset'} onClick={() => setActiveTab('Dataset')} />
             <TabBtn icon={<Blocks className="w-4 h-4 shrink-0"/>} label="Builder" active={activeTab==='Builder'} onClick={() => setActiveTab('Builder')} />
@@ -432,9 +432,9 @@ export default function LaboratoryDashboard() {
 
           <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
             
-            {activeTab === 'Journey' && (
+            {activeTab === 'Intro' && (
               <div className="h-full">
-                <LearningJourney onNavigate={(tab) => setActiveTab(tab as Tab)} />
+                <Introduction />
               </div>
             )}
 
