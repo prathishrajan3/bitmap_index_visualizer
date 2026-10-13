@@ -13,8 +13,8 @@ const DEFAULT_SCHEMA: DatasetSchema = {
   domain: 'University',
   columns: [
     { id: 'col-1', name: 'Department', type: 'string', cardinality: 3, distribution: 'Uniform' },
-    { id: 'col-2', name: 'Year', type: 'number', cardinality: 4, distribution: 'Cyclic' },
-    { id: 'col-3', name: 'Hostel', type: 'boolean', cardinality: 2, distribution: 'Random' }
+    { id: 'col-2', name: 'Year', type: 'string', cardinality: 4, distribution: 'Cyclic' },
+    { id: 'col-3', name: 'Hostel', type: 'string', cardinality: 2, distribution: 'Random' }
   ]
 };
 
