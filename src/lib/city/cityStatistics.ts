@@ -1,5 +1,6 @@
 import { CityEntity, CityBitmapIndex, CityQueryNode } from './cityTypes';
 import { executeCityQuery, executeCityQueryFast, CityExecutionResult } from './cityQueries';
+import { buildCityBitmapIndex } from './cityBitmapEngine';
 
 export const MIN_RELIABLE_RESOLUTION_MS = 0.0001; // 0.1 microseconds (100 nanoseconds)
 
@@ -32,11 +33,13 @@ export interface CityBenchmarkStatistics {
   winner: 'bitmap' | 'table_scan' | 'tie' | 'inconclusive';
   indexBuildTimeMs?: number;
   breakEvenQueries?: number | null;
+  breakEvenStatus?: string;
   indexMemoryBytes?: number;
   tableScanBatchSize?: number;
   bitmapBatchSize?: number;
   tableScanSubResolution?: boolean;
   bitmapSubResolution?: boolean;
+  validationError?: string;
 }
 
 export interface AdaptiveBatchConfig {
@@ -227,6 +230,109 @@ export function calibrateBatchSize(
   return maxBatchSize;
 }
 
+export interface BreakEvenOptions {
+  resultSetsEqual?: boolean;
+  tableScanSubResolution?: boolean;
+  bitmapSubResolution?: boolean;
+}
+
+/**
+ * Calculates break-even query count:
+ *   Break-even queries = ceil(indexBuildTime / timeSavedPerQuery)
+ * where timeSavedPerQuery = tableScanMedian - bitmapMedian.
+ * Uses full-precision unrounded inputs and enforces strict validity guards.
+ */
+export function calculateBreakEvenQueries(
+  indexBuildTimeMs: number | undefined,
+  tableScanMedianMs: number | undefined,
+  bitmapMedianMs: number | undefined,
+  options: BreakEvenOptions = {}
+): number | null {
+  // 1. Result sets must be identical
+  if (options.resultSetsEqual === false) {
+    return null;
+  }
+
+  // 2. All inputs must be finite numbers
+  if (
+    indexBuildTimeMs === undefined ||
+    tableScanMedianMs === undefined ||
+    bitmapMedianMs === undefined ||
+    !Number.isFinite(indexBuildTimeMs) ||
+    !Number.isFinite(tableScanMedianMs) ||
+    !Number.isFinite(bitmapMedianMs)
+  ) {
+    return null;
+  }
+
+  // 3. Build time must be positive
+  if (indexBuildTimeMs <= 0) {
+    return null;
+  }
+
+  // 4. Neither timing measurement may be inconclusive or sub-resolution
+  if (
+    options.tableScanSubResolution ||
+    options.bitmapSubResolution ||
+    tableScanMedianMs < MIN_RELIABLE_RESOLUTION_MS ||
+    bitmapMedianMs < MIN_RELIABLE_RESOLUTION_MS
+  ) {
+    return null;
+  }
+
+  // 5. Bitmap must save time: tableScanMedianMs > bitmapMedianMs
+  const timeSavedPerQuery = tableScanMedianMs - bitmapMedianMs;
+  if (timeSavedPerQuery <= 0) {
+    return null;
+  }
+
+  const queries = Math.ceil(indexBuildTimeMs / timeSavedPerQuery);
+  return Number.isFinite(queries) && queries > 0 ? queries : null;
+}
+
+/**
+ * Measures the one-time index construction time using independent repetitions and median statistics.
+ * Excludes warm-up from reported timing and avoids retaining duplicate index instances in memory.
+ */
+export function measureIndexBuildTime(
+  dataset: CityEntity[],
+  options: { warmup?: boolean; repetitions?: number } = {}
+): { medianBuildTimeMs: number; finalIndex: CityBitmapIndex } {
+  const size = dataset.length;
+  // Adaptive repetitions: smaller datasets run more repetitions, huge datasets run fewer to avoid UI freeze/memory bloat
+  const repetitions = options.repetitions ?? (size <= 10000 ? 5 : size <= 50000 ? 3 : 2);
+  const shouldWarmup = options.warmup ?? (size <= 50000);
+
+  // Optional warm-up call (not included in samples)
+  if (shouldWarmup) {
+    let warmIndex: CityBitmapIndex | null = buildCityBitmapIndex(dataset);
+    warmIndex = null;
+  }
+
+  const buildTimes: number[] = [];
+  let latestIndex: CityBitmapIndex | null = null;
+
+  for (let r = 0; r < repetitions; r++) {
+    const t0 = performance.now();
+    latestIndex = buildCityBitmapIndex(dataset);
+    const elapsed = performance.now() - t0;
+    
+    // Guard against negative/zero anomalies
+    if (elapsed > 0 && Number.isFinite(elapsed)) {
+      buildTimes.push(elapsed);
+    }
+  }
+
+  const medianBuildTime = buildTimes.length > 0 
+    ? median(buildTimes) 
+    : 0.1;
+
+  return {
+    medianBuildTimeMs: medianBuildTime,
+    finalIndex: latestIndex!
+  };
+}
+
 /**
  * Runs repeated benchmark executions comparing Table Scan vs. Bitmap Index.
  * Uses adaptive-duration batching (20–50 ms intervals) to eliminate zero-microsecond artifacts,
@@ -252,9 +358,20 @@ export function runRepeatedCityBenchmark(
 
   const tsIds = fullTsResult.matchingIds;
   const bmIds = fullBmResult.matchingIds;
-  const resultSetsEqual = 
-    tsIds.length === bmIds.length &&
-    tsIds.every((id, idx) => id === bmIds[idx]);
+  let resultSetsEqual = tsIds.length === bmIds.length;
+  if (resultSetsEqual) {
+    for (let i = 0; i < tsIds.length; i++) {
+      if (tsIds[i] !== bmIds[i]) {
+        resultSetsEqual = false;
+        break;
+      }
+    }
+    if (!resultSetsEqual) {
+      // Check set equality in case ordering differed
+      const tsSet = new Set(tsIds);
+      resultSetsEqual = bmIds.every(id => tsSet.has(id));
+    }
+  }
 
   // 2. Warm-up executions on fast benchmark path
   for (let i = 0; i < warmupIterations; i++) {
@@ -330,11 +447,20 @@ export function runRepeatedCityBenchmark(
   // 6. Safe Speedup and Winner Calculation
   let speedup: number | null = null;
   let winner: 'bitmap' | 'table_scan' | 'tie' | 'inconclusive' = 'inconclusive';
+  let validationError: string | undefined = undefined;
 
   const tsValid = !tableScanSubResolution && tableScanMedian >= MIN_RELIABLE_RESOLUTION_MS;
   const bmValid = !bitmapSubResolution && bitmapMedian >= MIN_RELIABLE_RESOLUTION_MS;
 
-  if (tsValid && bmValid) {
+  if (!resultSetsEqual) {
+    speedup = null;
+    winner = 'inconclusive';
+    validationError = `Result set mismatch: Table Scan found ${tsIds.length} matches, Packed Bitmap found ${bmIds.length} matches.`;
+  } else if (!tsValid || !bmValid) {
+    // Timing below reliable resolution
+    speedup = null;
+    winner = 'inconclusive';
+  } else {
     speedup = tableScanMedian / bitmapMedian;
     if (speedup >= 1.05) {
       winner = 'bitmap';
@@ -343,27 +469,29 @@ export function runRepeatedCityBenchmark(
     } else {
       winner = 'tie';
     }
-  } else if (!tsValid && !bmValid) {
-    // Both sub-resolution
-    speedup = null;
-    winner = 'inconclusive';
-  } else if (tsValid && !bmValid) {
-    // Bitmap is faster than measurable sub-resolution limit
-    speedup = tableScanMedian / MIN_RELIABLE_RESOLUTION_MS;
-    winner = 'bitmap';
-  } else {
-    // Table Scan is sub-resolution
-    speedup = MIN_RELIABLE_RESOLUTION_MS / bitmapMedian;
-    winner = 'table_scan';
   }
 
-  // 7. Calculate Break-Even Queries: indexBuildTime / (tableScanTime - bitmapTime)
-  let breakEvenQueries: number | null = null;
-  if (indexBuildTimeMs !== undefined && indexBuildTimeMs > 0 && tableScanMedian > bitmapMedian) {
-    const savingsPerQuery = tableScanMedian - bitmapMedian;
-    if (savingsPerQuery > 0) {
-      breakEvenQueries = Math.ceil(indexBuildTimeMs / savingsPerQuery);
+  // 7. Calculate Break-Even Queries using centralized helper with full-precision measurements
+  const breakEvenQueries = calculateBreakEvenQueries(
+    indexBuildTimeMs,
+    tableScanMedian,
+    bitmapMedian,
+    {
+      resultSetsEqual,
+      tableScanSubResolution,
+      bitmapSubResolution
     }
+  );
+
+  let breakEvenStatus = 'N/A';
+  if (!resultSetsEqual) {
+    breakEvenStatus = 'N/A — result mismatch';
+  } else if (tableScanSubResolution || bitmapSubResolution) {
+    breakEvenStatus = 'N/A — timing inconclusive';
+  } else if (tableScanMedian <= bitmapMedian) {
+    breakEvenStatus = 'No break-even — bitmap is not faster';
+  } else if (breakEvenQueries !== null) {
+    breakEvenStatus = `${breakEvenQueries} queries`;
   }
 
   return {
@@ -387,10 +515,12 @@ export function runRepeatedCityBenchmark(
     winner,
     indexBuildTimeMs,
     breakEvenQueries,
+    breakEvenStatus,
     indexMemoryBytes,
     tableScanBatchSize: tsBatchSize,
     bitmapBatchSize: bmBatchSize,
     tableScanSubResolution,
-    bitmapSubResolution
+    bitmapSubResolution,
+    validationError
   };
 }

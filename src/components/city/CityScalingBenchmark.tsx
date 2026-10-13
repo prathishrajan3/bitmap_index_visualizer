@@ -3,8 +3,12 @@
 import React, { useState } from 'react';
 import { useCityStore } from '@/store/useCityStore';
 import { generateCityData } from '@/lib/city/cityGenerator';
-import { buildCityBitmapIndex } from '@/lib/city/cityBitmapEngine';
-import { runRepeatedCityBenchmark, CityBenchmarkStatistics, MIN_RELIABLE_RESOLUTION_MS } from '@/lib/city/cityStatistics';
+import { 
+  runRepeatedCityBenchmark, 
+  measureIndexBuildTime,
+  CityBenchmarkStatistics, 
+  MIN_RELIABLE_RESOLUTION_MS 
+} from '@/lib/city/cityStatistics';
 import { estimatePackedIndexBytes } from '@/lib/city/packedBitmap';
 import { CityQueryNode } from '@/lib/city/cityTypes';
 import { 
@@ -53,6 +57,17 @@ function formatTiming(timeMs: number, isSubRes?: boolean): string {
     return `${timeMs.toFixed(3)} ms`;
   }
   return `${timeMs.toFixed(2)} ms`;
+}
+
+/**
+ * Formats memory payload in KB or MB with consistent units.
+ */
+function formatMemoryPayload(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '0 KB';
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+  return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 interface BenchmarkSnapshot {
@@ -132,12 +147,10 @@ export function CityScalingBenchmark() {
         const testData = generateCityData({ seed: 999, count: size, timeOfDay: 'Morning', weather: 'Clear', scenario: 'None' });
         const genTimeMs = performance.now() - dataStart;
 
-        // Build packed bitmap index outside of query execution measurement
-        const buildStart = performance.now();
-        const testIndex = buildCityBitmapIndex(testData);
-        const buildTimeMs = performance.now() - buildStart;
+        // Measure one-time index build time with independent repetitions, unmeasured warm-up, and median statistics
+        const { medianBuildTimeMs: buildTimeMs, finalIndex: testIndex } = measureIndexBuildTime(testData);
 
-        // Calculate packed index memory
+        // Calculate packed index memory payload
         const memoryBytes = estimatePackedIndexBytes(testIndex, size);
 
         // Run repeated benchmark using the exact snapshotted AST for BOTH Table Scan and Bitmap
@@ -501,28 +514,90 @@ export function CityScalingBenchmark() {
                 <thead className="text-neutral-500 border-b border-neutral-800">
                   <tr>
                     <th className="py-1">Rows</th>
-                    <th className="py-1">Batch Executions</th>
-                    <th className="py-1">Index RAM (Est.)</th>
-                    <th className="py-1">1-Time Build</th>
-                    <th className="py-1 text-right">Break-Even Queries</th>
+                    <th 
+                      className="py-1" 
+                      title="Calibrated number of query iterations in each timed sample batch. Calibrated independently to achieve the 20–25ms duration target."
+                    >
+                      Calibrated Batch Size (TS / BM)
+                    </th>
+                    <th 
+                      className="py-1" 
+                      title="Estimated packed Uint32Array word payload storage (excludes JavaScript object wrappers, maps, and runtime heap overhead)."
+                    >
+                      Packed Bitmap Payload (Est.)
+                    </th>
+                    <th 
+                      className="py-1" 
+                      title="Robust median build time of independent index construction repetitions (dataset generation and warm-up excluded)."
+                    >
+                      1-Time Build (Median)
+                    </th>
+                    <th 
+                      className="py-1 text-right" 
+                      title="Math.ceil(buildTime / (tableScan - packedBitmap)). Calculated using unrounded full-precision measurements."
+                    >
+                      Break-Even Queries
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-800/40 text-neutral-300">
                   {activeSizes.map(size => {
                     const res = results[size];
                     if (!res) return null;
-                    const memKb = res.indexMemoryBytes ? Math.round(res.indexMemoryBytes / 1024) : 0;
 
                     return (
-                      <tr key={size}>
-                        <td className="py-1 text-white font-medium">{size.toLocaleString()}</td>
-                        <td className="py-1 text-neutral-400">
+                      <tr key={size} className="hover:bg-neutral-900/40 transition-colors">
+                        <td className="py-1.5 text-white font-medium">{size.toLocaleString()}</td>
+                        <td 
+                          className="py-1.5 text-neutral-400" 
+                          title={`Calibrated batch iterations: Table Scan = ${res.tableScanBatchSize?.toLocaleString() || '-'}, Packed Bitmap = ${res.bitmapBatchSize?.toLocaleString() || '-'}. Calibrated separately to obtain reliable 20–25ms timing intervals.`}
+                        >
                           TS: {res.tableScanBatchSize?.toLocaleString() || '-'} / BM: {res.bitmapBatchSize?.toLocaleString() || '-'}
                         </td>
-                        <td className="py-1 text-cyan-400">{memKb} KB</td>
-                        <td className="py-1 text-amber-400">{res.indexBuildTimeMs ? `${res.indexBuildTimeMs.toFixed(1)} ms` : 'N/A'}</td>
-                        <td className="py-1 text-right font-bold text-white">
-                          {res.breakEvenQueries ? `${res.breakEvenQueries} queries` : 'N/A'}
+                        <td 
+                          className="py-1.5 text-cyan-400 font-mono" 
+                          title={`Raw Uint32Array buffer storage: ${res.indexMemoryBytes?.toLocaleString() || 0} bytes. Excludes JS object/heap overhead.`}
+                        >
+                          {formatMemoryPayload(res.indexMemoryBytes)}
+                        </td>
+                        <td 
+                          className="py-1.5 text-amber-400 font-mono"
+                          title={`Median of repeated independent index builds: ${res.indexBuildTimeMs ? res.indexBuildTimeMs.toFixed(3) : '-'} ms`}
+                        >
+                          {res.indexBuildTimeMs ? `${res.indexBuildTimeMs.toFixed(1)} ms` : 'N/A'}
+                        </td>
+                        <td className="py-1.5 text-right font-mono">
+                          {!res.resultSetsEqual ? (
+                            <span 
+                              className="text-rose-400 font-bold" 
+                              title={res.validationError || 'Result sets differ between Table Scan and Packed Bitmap'}
+                            >
+                              N/A (mismatch)
+                            </span>
+                          ) : res.tableScanSubResolution || res.bitmapSubResolution ? (
+                            <span 
+                              className="text-neutral-400" 
+                              title="Timing measurement is below reliable timer resolution (<0.1 µs)"
+                            >
+                              N/A (inconclusive)
+                            </span>
+                          ) : res.tableScanMedianMs <= res.bitmapMedianMs ? (
+                            <span 
+                              className="text-amber-400" 
+                              title="Packed Bitmap is not faster than Table Scan for this query workload"
+                            >
+                              No break-even (bitmap not faster)
+                            </span>
+                          ) : res.breakEvenQueries !== null && res.breakEvenQueries !== undefined ? (
+                            <span 
+                              className="text-white font-bold cursor-help hover:text-cyan-300 transition-colors underline decoration-dotted decoration-neutral-600"
+                              title={`Break-Even Audit Details:\n• Index Build (Median): ${res.indexBuildTimeMs?.toFixed(4)} ms\n• Table Scan (Median): ${res.tableScanMedianMs.toFixed(5)} ms\n• Packed Bitmap (Median): ${res.bitmapMedianMs.toFixed(5)} ms\n• Time Saved / Query: ${(res.tableScanMedianMs - res.bitmapMedianMs).toFixed(5)} ms\n• Ratio: ${(res.indexBuildTimeMs! / (res.tableScanMedianMs - res.bitmapMedianMs)).toFixed(3)}\n• Break-Even = Math.ceil(Ratio) = ${res.breakEvenQueries} queries\n(Calculated using unrounded median measurements)`}
+                            >
+                              {res.breakEvenQueries.toLocaleString()} queries
+                            </span>
+                          ) : (
+                            <span className="text-neutral-500">N/A</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -531,10 +606,29 @@ export function CityScalingBenchmark() {
               </table>
             </div>
 
-            <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-800/40 text-[10px] text-emerald-200/90 leading-normal flex items-start gap-2">
-              <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <strong>Shared State Architecture:</strong> The Scaling Experiment is bound directly to the Performance Lab's District and Issue filters in <code className="text-emerald-300 font-mono">useCityStore</code>. Both Table Scan and Packed Bitmap Index evaluate the exact same dynamically generated AST across the full synthetic dataset.
+            <div className="flex flex-col gap-2 pt-1 text-[10px] text-neutral-400">
+              <div className="p-2.5 rounded bg-blue-950/20 border border-blue-800/40 text-blue-200/90 leading-normal flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Break-Even Auditing &amp; Precision:</strong> Break-even is mathematically defined as <code className="text-cyan-300 font-mono">Math.ceil(indexBuildTime / (tableScanMedian - bitmapMedian))</code> and is calculated using full-precision unrounded median measurements. Displayed table times are formatted for readability (e.g. 1.36 ms vs 1.354 ms), which can cause slight differences if recalculated from display-rounded numbers. Hover over any Break-Even value to view the unrounded numbers and exact ratio.
+                </div>
+              </div>
+              <div className="p-2.5 rounded bg-neutral-900/60 border border-neutral-800/80 text-neutral-300 leading-normal flex items-start gap-2">
+                <HardDrive className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div><strong>Measurement Methodology:</strong></div>
+                  <ul className="list-disc list-inside space-y-0.5 text-neutral-400">
+                    <li><strong>Calibrated Batch Size (TS / BM):</strong> Because Table Scan and Packed Bitmap queries run at vastly different speeds, batch sizes are calibrated independently to 20–25 ms intervals to eliminate timer quantization noise without freezing the UI. Reported values represent the calibrated batch size per sample, not total benchmark executions.</li>
+                    <li><strong>Packed Bitmap Payload (Est.):</strong> Estimates raw <code className="text-neutral-300 font-mono">Uint32Array</code> word buffer allocations for all indexed category bitvectors. Excludes JavaScript object wrappers, maps, and runtime heap overhead.</li>
+                    <li><strong>1-Time Build (Median):</strong> Measured across repeated independent index builds with unmeasured warm-up to filter out garbage collection pauses and JIT compilation noise. Dataset generation is strictly excluded.</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-800/40 text-[10px] text-emerald-200/90 leading-normal flex items-start gap-2">
+                <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Shared State Architecture:</strong> The Scaling Experiment is bound directly to the Performance Lab's District and Issue filters in <code className="text-emerald-300 font-mono">useCityStore</code>. Both Table Scan and Packed Bitmap Index evaluate the exact same dynamically generated AST across the full synthetic dataset.
+                </div>
               </div>
             </div>
           </div>
