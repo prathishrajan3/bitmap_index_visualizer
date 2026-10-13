@@ -1,6 +1,7 @@
 export type Distribution = 'Uniform' | 'Cyclic' | 'Random' | 'Skewed' | 'Zipf';
 
 export interface ColumnDefinition {
+  id?: string;
   name: string;
   type: 'string' | 'number' | 'boolean';
   cardinality: number;

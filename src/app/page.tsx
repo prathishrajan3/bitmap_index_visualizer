@@ -51,6 +51,11 @@ export default function LaboratoryDashboard() {
   const skipNextGenerate = useRef(false);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      generateData();
+      return;
+    }
     if (skipNextGenerate.current) {
       skipNextGenerate.current = false;
       return;
@@ -58,7 +63,7 @@ export default function LaboratoryDashboard() {
     generateData();
     setExplanation(`Generated ${rowCount} rows using Seed ${seed}. The schema contains ${schema.columns.length} columns.`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowCount, seed, schema.columns]);
+  }, [rowCount, seed]);
 
   // Background Ping to keep Neon Database Active
   useEffect(() => {
@@ -348,10 +353,10 @@ export default function LaboratoryDashboard() {
                 <Database className="w-4 h-4" /> Column Definitions
               </h2>
               <div className="space-y-4">
-                {schema.columns.map(col => (
-                  <div key={col.name} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2 relative group">
+                {schema.columns.map((col, idx) => (
+                  <div key={col.id || `col-${idx}`} className="bg-neutral-900/50 p-3 rounded border border-neutral-800 space-y-2 relative group">
                     <button 
-                      onClick={() => removeColumnDef(col.name)}
+                      onClick={() => removeColumnDef(col.id || col.name)}
                       className="absolute top-2 right-2 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Remove column"
                     >
@@ -360,7 +365,7 @@ export default function LaboratoryDashboard() {
                     <input 
                       type="text"
                       value={col.name}
-                      onChange={e => updateColumnDef(col.name, { name: e.target.value })}
+                      onChange={e => updateColumnDef(col.id || col.name, { name: e.target.value })}
                       className="font-medium text-blue-300 text-sm bg-transparent border-b border-transparent hover:border-neutral-700 focus:border-blue-500 outline-none w-5/6 transition-colors"
                     />
                     
@@ -369,7 +374,7 @@ export default function LaboratoryDashboard() {
                         <label className="text-neutral-500 block mb-1">Cardinality</label>
                         <input 
                           type="number" min="1" max="1000" value={col.cardinality}
-                          onChange={e => updateColumnDef(col.name, { cardinality: Number(e.target.value) })}
+                          onChange={e => updateColumnDef(col.id || col.name, { cardinality: Number(e.target.value) })}
                           className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
                         />
                       </div>
@@ -377,7 +382,7 @@ export default function LaboratoryDashboard() {
                         <label className="text-neutral-500 block mb-1">Distribution</label>
                         <select 
                           value={col.distribution}
-                          onChange={e => updateColumnDef(col.name, { distribution: e.target.value as any })}
+                          onChange={e => updateColumnDef(col.id || col.name, { distribution: e.target.value as any })}
                           className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 outline-none"
                         >
                           <option>Uniform</option>

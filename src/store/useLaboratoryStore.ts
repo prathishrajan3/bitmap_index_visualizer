@@ -12,9 +12,9 @@ import {
 const DEFAULT_SCHEMA: DatasetSchema = {
   domain: 'University',
   columns: [
-    { name: 'Department', type: 'string', cardinality: 3, distribution: 'Uniform' },
-    { name: 'Year', type: 'number', cardinality: 4, distribution: 'Cyclic' },
-    { name: 'Hostel', type: 'boolean', cardinality: 2, distribution: 'Random' }
+    { id: 'col-1', name: 'Department', type: 'string', cardinality: 3, distribution: 'Uniform' },
+    { id: 'col-2', name: 'Year', type: 'number', cardinality: 4, distribution: 'Cyclic' },
+    { id: 'col-3', name: 'Hostel', type: 'boolean', cardinality: 2, distribution: 'Random' }
   ]
 };
 
@@ -31,9 +31,9 @@ interface LaboratoryState {
   // Actions
   setRowCount: (count: number) => void;
   setSeed: (seed: number) => void;
-  updateColumnDef: (colName: string, updates: Partial<ColumnDefinition>) => void;
+  updateColumnDef: (colIdOrName: string, updates: Partial<ColumnDefinition>) => void;
   addColumnDef: () => void;
-  removeColumnDef: (colName: string) => void;
+  removeColumnDef: (colIdOrName: string) => void;
   generateData: () => void;
   loadExternalDataset: (dataset: DatasetRow[], columns?: ColumnDefinition[], domain?: string) => void;
   buildIndexes: (columns: string[]) => void;
@@ -49,31 +49,92 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
   setRowCount: (count) => set({ rowCount: count }),
   setSeed: (seed) => set({ seed }),
   
-  updateColumnDef: (colName, updates) => set((state) => ({
-    schema: {
-      ...state.schema,
-      columns: state.schema.columns.map(col => 
-        col.name === colName ? { ...col, ...updates } : col
-      )
-    }
-  })),
+  updateColumnDef: (colIdOrName, updates) => set((state) => {
+    let oldName = '';
+    const newColumns = state.schema.columns.map(col => {
+      if (col.id === colIdOrName || col.name === colIdOrName) {
+        oldName = col.name;
+        return { ...col, ...updates };
+      }
+      return col;
+    });
 
-  addColumnDef: () => set((state) => {
-    const newName = `Column ${state.schema.columns.length + 1}`;
+    const newName = updates.name;
+    let newDataset = state.dataset;
+    // If column was renamed and dataset has rows, rename property in all rows
+    if (newName && oldName && newName !== oldName && state.dataset.length > 0) {
+      newDataset = state.dataset.map(row => {
+        const newRow = { ...row };
+        if (oldName in newRow) {
+          newRow[newName] = newRow[oldName];
+          delete newRow[oldName];
+        }
+        return newRow;
+      });
+    }
+
     return {
       schema: {
         ...state.schema,
-        columns: [...state.schema.columns, { name: newName, type: 'string', cardinality: 5, distribution: 'Uniform' }]
-      }
+        columns: newColumns
+      },
+      dataset: newDataset
     };
   }),
 
-  removeColumnDef: (colName) => set((state) => ({
-    schema: {
-      ...state.schema,
-      columns: state.schema.columns.filter(col => col.name !== colName)
+  addColumnDef: () => set((state) => {
+    const newId = `col-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    let count = state.schema.columns.length + 1;
+    let newName = `Column ${count}`;
+    while (state.schema.columns.some(c => c.name.toLowerCase() === newName.toLowerCase())) {
+      count++;
+      newName = `Column ${count}`;
     }
-  })),
+    const newCol: ColumnDefinition = {
+      id: newId,
+      name: newName,
+      type: 'string',
+      cardinality: 3,
+      distribution: 'Uniform'
+    };
+
+    // If dataset already exists, add the new column to existing rows with realistic options
+    const sampleOptions = [`${newName}_A`, `${newName}_B`, `${newName}_C`];
+    const newDataset = state.dataset.length > 0
+      ? state.dataset.map((row, idx) => ({
+          ...row,
+          [newName]: sampleOptions[idx % sampleOptions.length]
+        }))
+      : [];
+
+    return {
+      schema: {
+        ...state.schema,
+        columns: [...state.schema.columns, newCol]
+      },
+      dataset: newDataset
+    };
+  }),
+
+  removeColumnDef: (colIdOrName) => set((state) => {
+    const targetCol = state.schema.columns.find(c => c.id === colIdOrName || c.name === colIdOrName);
+    const colName = targetCol ? targetCol.name : colIdOrName;
+    const remainingCols = state.schema.columns.filter(c => c.id !== colIdOrName && c.name !== colIdOrName);
+    
+    const newDataset = state.dataset.map(row => {
+      const newRow = { ...row };
+      delete newRow[colName];
+      return newRow;
+    });
+
+    return {
+      schema: {
+        ...state.schema,
+        columns: remainingCols
+      },
+      dataset: newDataset
+    };
+  }),
 
   generateData: () => {
     const { rowCount, schema, seed } = get();
@@ -87,10 +148,17 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
     if (!newDataset || newDataset.length === 0) return;
     const sample = newDataset[0];
     const columns: ColumnDefinition[] = newColumns && newColumns.length > 0
-      ? newColumns
-      : Object.keys(sample).filter(k => k !== 'id').map(name => {
+      ? newColumns.map((c, i) => ({
+          id: c.id || `col-${Date.now()}-${i}-${c.name}`,
+          name: c.name,
+          type: c.type || 'string',
+          cardinality: c.cardinality || (new Set(newDataset.map(r => r[c.name])).size),
+          distribution: c.distribution || 'Uniform'
+        }))
+      : Object.keys(sample).filter(k => k !== 'id').map((name, i) => {
           const distinctVals = new Set(newDataset.map(r => r[name]));
           return {
+            id: `col-${Date.now()}-${i}-${name}`,
             name,
             type: 'string',
             cardinality: distinctVals.size,
