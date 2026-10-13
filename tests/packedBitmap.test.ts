@@ -13,8 +13,15 @@ import {
   estimatePackedIndexBytes
 } from '../src/lib/city/packedBitmap';
 import { buildCityBitmapIndex } from '../src/lib/city/cityBitmapEngine';
-import { executeCityQuery } from '../src/lib/city/cityQueries';
-import { executeTableScan } from '../src/lib/city/cityStatistics';
+import { executeCityQuery, executeCityQueryFast } from '../src/lib/city/cityQueries';
+import { 
+  executeTableScan, 
+  executeTableScanFast, 
+  calibrateBatchSize, 
+  runRepeatedCityBenchmark, 
+  MIN_RELIABLE_RESOLUTION_MS,
+  median 
+} from '../src/lib/city/cityStatistics';
 import { generateCityData } from '../src/lib/city/cityGenerator';
 import { CityEntity, CityQueryNode } from '../src/lib/city/cityTypes';
 
@@ -380,5 +387,86 @@ describe('Packed Bitmap Index Engine - Automated Correctness Tests', () => {
 
     // Verify index buffers were NOT mutated by query executions
     assert.deepEqual(districtBmp.words, originalWordsSnapshot, 'Bitmap index buffer was mutated!');
+  });
+
+  // 16. Fast execution paths return identical results without timing overhead
+  it('16. Asserts fast execution paths match standard paths and return identical IDs', () => {
+    const records = generateCityData({ seed: 888, count: 1000, timeOfDay: 'Morning', weather: 'Clear', scenario: 'None' });
+    const index = buildCityBitmapIndex(records);
+    const ids = records.map(r => r.id);
+
+    const query: CityQueryNode = {
+      type: 'logical',
+      operator: 'AND',
+      left: { type: 'predicate', column: 'district', operator: '=', value: 'Central Business District' },
+      right: {
+        type: 'logical',
+        operator: 'OR',
+        left: { type: 'predicate', column: 'trafficLevel', operator: '=', value: 'Severe' },
+        right: { type: 'predicate', column: 'riskLevel', operator: '=', value: 'Critical' }
+      }
+    };
+
+    const stdTs = executeTableScan(query, records);
+    const fastTs = executeTableScanFast(query, records);
+    const stdBm = executeCityQuery(query, index, 1000, ids);
+    const fastBm = executeCityQueryFast(query, index, 1000, ids);
+
+    assert.deepEqual(fastTs, stdTs.matchingIds);
+    assert.deepEqual(fastBm, stdBm.matchingIds);
+    assert.deepEqual(fastTs, fastBm);
+  });
+
+  // 17. Adaptive batch calibration scales dynamically
+  it('17. Calibrates batch size dynamically to reach target duration', () => {
+    let callCount = 0;
+    // Simulate a fast function (takes ~0.001 ms)
+    const fastFn = () => {
+      callCount++;
+      return 1;
+    };
+
+    const batchSize = calibrateBatchSize(fastFn, {
+      targetDurationMs: 20,
+      minTargetDurationMs: 15,
+      maxBatchSize: 5000,
+      maxCalibrationMs: 50
+    });
+
+    assert.ok(batchSize > 1, `Expected batch size > 1, got ${batchSize}`);
+    assert.ok(batchSize <= 5000, `Batch size should not exceed max cap`);
+  });
+
+  // 18. Winner and speedup calculations handle all branches
+  it('18. Correctly computes winner and speedup across various scenarios', () => {
+    const data = generateCityData({ seed: 101, count: 500, timeOfDay: 'Morning', weather: 'Clear', scenario: 'None' });
+    const index = buildCityBitmapIndex(data);
+
+    const ast: CityQueryNode = {
+      type: 'predicate',
+      column: 'trafficLevel',
+      operator: '=',
+      value: 'Severe'
+    };
+
+    const stats = runRepeatedCityBenchmark(ast, data, index, 2, 3);
+    assert.ok(stats.resultSetsEqual);
+    assert.ok(stats.tableScanMedianMs > 0);
+    assert.ok(stats.bitmapMedianMs > 0);
+    assert.ok(['bitmap', 'table_scan', 'tie', 'inconclusive'].includes(stats.winner));
+    assert.ok(stats.speedup !== null && stats.speedup > 0);
+  });
+
+  // 19. Sub-resolution and zero-duration safety
+  it('19. Safely handles sub-resolution or near-zero durations without NaN or Infinity', () => {
+    // Test median helper
+    assert.equal(median([]), 0);
+    assert.equal(median([5]), 5);
+    assert.equal(median([1, 3, 2]), 2);
+    assert.equal(median([1, 2, 3, 4]), 2.5);
+
+    // Verify sub-resolution constant
+    assert.ok(MIN_RELIABLE_RESOLUTION_MS > 0);
+    assert.ok(MIN_RELIABLE_RESOLUTION_MS <= 0.001);
   });
 });

@@ -123,6 +123,59 @@ export function executeCityQuery(
   return { finalBitmap, metrics, steps, matchingIds };
 }
 
+/**
+ * Pure benchmark execution path for Packed Bitmap without internal performance.now()
+ * timer overhead, step recording, description formatting, or visualizer instrumentation.
+ * Evaluates identical query AST predicates and materializes matching record IDs.
+ */
+export function executeCityQueryFast(
+  ast: CityQueryNode,
+  index: CityBitmapIndex,
+  datasetSize: number,
+  datasetIds: string[]
+): string[] {
+  function evaluate(node: CityQueryNode): CityPackedBitmap {
+    if (node.type === 'predicate') {
+      const fieldIndex = index[node.column];
+      if (!fieldIndex) return createEmptyPackedBitmap(datasetSize);
+
+      const rawBitmap = fieldIndex[node.value];
+      if (rawBitmap instanceof CityPackedBitmap) {
+        if (node.operator === '=') return rawBitmap;
+        if (node.operator === '!=') return packedBitmapNot(rawBitmap);
+        return createEmptyPackedBitmap(datasetSize);
+      }
+      if (rawBitmap) {
+        const bmp = new CityPackedBitmap(
+          datasetSize, 
+          (rawBitmap as any).words || (rawBitmap as any).bits, 
+          node.column, 
+          node.value
+        );
+        if (node.operator === '=') return bmp;
+        if (node.operator === '!=') return packedBitmapNot(bmp);
+        return createEmptyPackedBitmap(datasetSize);
+      }
+      return createEmptyPackedBitmap(datasetSize);
+    }
+    if (node.type === 'not') {
+      return packedBitmapNot(evaluate(node.operand));
+    }
+    if (node.type === 'logical') {
+      const left = evaluate(node.left);
+      const right = evaluate(node.right);
+      if (node.operator === 'AND') return packedBitmapAnd(left, right);
+      if (node.operator === 'OR') return packedBitmapOr(left, right);
+      if (node.operator === 'XOR') return packedBitmapXor(left, right);
+      return createEmptyPackedBitmap(datasetSize);
+    }
+    return createEmptyPackedBitmap(datasetSize);
+  }
+
+  const finalBitmap = evaluate(ast);
+  return extractPackedMatchingIds(finalBitmap.words, datasetSize, datasetIds);
+}
+
 // Convert the loose AI JSON structure to our strict AST, validating fields.
 export function parseAICityQuery(aiQuery: any, validFields: Set<string>): CityQueryNode {
   if (!aiQuery || typeof aiQuery !== 'object') {

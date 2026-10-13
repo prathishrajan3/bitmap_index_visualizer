@@ -63,11 +63,10 @@ async function main() {
         'TS: ' + res.tableScanMedianMs.toFixed(3).padStart(7) + 'ms | ' +
         'BM: ' + res.bitmapMedianMs.toFixed(3).padStart(7) + 'ms | ' +
         'Speedup: ' + (res.speedup ? res.speedup.toFixed(2) + 'x' : 'N/A').padStart(7) + ' | ' +
-        'Winner: ' + res.winner.padEnd(10) + ' | ' +
+        'Winner: ' + res.winner.padEnd(12) + ' | ' +
         'Eq: ' + (res.resultSetsEqual ? 'PASS' : 'FAIL') + ' | ' +
-        'Matches: ' + res.matchingRows.toString().padStart(6) + ' | ' +
+        'Batches: ' + `TS:${res.tableScanBatchSize} BM:${res.bitmapBatchSize}`.padEnd(18) + ' | ' +
         'Build: ' + tBuild.toFixed(1).padStart(5) + 'ms | ' +
-        'Mem: ' + (mem / 1024).toFixed(0).padStart(4) + 'KB | ' +
         'BreakEven: ' + (res.breakEvenQueries ? res.breakEvenQueries + ' q' : 'N/A')
       );
     }
