@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Bitmap, DatasetRow } from '@/lib/bitmap';
 import { Play, Pause, SkipBack, SkipForward, ChevronRight } from 'lucide-react';

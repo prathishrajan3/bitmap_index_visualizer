@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Bitmap, bitmapAnd, bitmapOr, bitmapXor, createBitmapResult } from '@/lib/bitmap';
+"use client";
+
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Bitmap, createBitmapResult } from '@/lib/bitmap';
 import { BitmapMatrix } from './BitmapMatrix';
-import { Play, Calculator } from 'lucide-react';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 
 interface BitmapAlgebraProps {
@@ -9,52 +10,82 @@ interface BitmapAlgebraProps {
 }
 
 export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
-  const { setAlgebraRecord } = useLaboratoryStore();
   const [leftIndex, setLeftIndex] = useState<number>(0);
   const [rightIndex, setRightIndex] = useState<number>(1);
   const [operator, setOperator] = useState<'AND' | 'OR' | 'XOR'>('AND');
-  const [result, setResult] = useState<Bitmap | null>(null);
-  const lastOpSignatureRef = React.useRef<string>('');
+  const lastOpSignatureRef = useRef<string>('');
 
-  const handleCalculate = React.useCallback(() => {
-    if (availableBitmaps.length < 2) return;
-    
-    const left = availableBitmaps[leftIndex];
-    const right = availableBitmaps[rightIndex];
-    if (!left || !right) return;
-    
+  const validBitmaps = useMemo(() => {
+    return Array.isArray(availableBitmaps) 
+      ? availableBitmaps.filter(b => b && Array.isArray(b.bits)) 
+      : [];
+  }, [availableBitmaps]);
+
+  // Clamp indices within bounds
+  const safeLeftIndex = Math.min(Math.max(0, leftIndex), Math.max(0, validBitmaps.length - 1));
+  const safeRightIndex = Math.min(Math.max(0, rightIndex), Math.max(0, validBitmaps.length - 1));
+
+  const left = validBitmaps[safeLeftIndex];
+  const right = validBitmaps[safeRightIndex];
+
+  // Pure derived computation via useMemo (avoids setState inside useEffect loop)
+  const computation = useMemo(() => {
+    if (!left || !right || !Array.isArray(left.bits) || !Array.isArray(right.bits)) {
+      return null;
+    }
+    const len = Math.min(left.bits.length, right.bits.length);
+    if (len === 0) return null;
+
+    const leftSlice = left.bits.slice(0, len);
+    const rightSlice = right.bits.slice(0, len);
+
     let resultBits: number[];
-    if (operator === 'AND') resultBits = bitmapAnd(left.bits, right.bits);
-    else if (operator === 'OR') resultBits = bitmapOr(left.bits, right.bits);
-    else resultBits = bitmapXor(left.bits, right.bits);
-    
-    const count = resultBits.filter(b => b === 1).length;
+    if (operator === 'AND') {
+      resultBits = leftSlice.map((b, i) => b & rightSlice[i]);
+    } else if (operator === 'OR') {
+      resultBits = leftSlice.map((b, i) => b | rightSlice[i]);
+    } else {
+      resultBits = leftSlice.map((b, i) => b ^ rightSlice[i]);
+    }
+
+    const matchCount = resultBits.filter(b => b === 1).length;
+    const derivedResult = createBitmapResult(
+      resultBits,
+      `Derived (${left.sourceColumn} ${operator} ${right.sourceColumn})`,
+      `${left.sourceValue} ${operator} ${right.sourceValue}`
+    );
+
+    return {
+      resultBits,
+      matchCount,
+      derivedResult
+    };
+  }, [left, right, operator]);
+
+  // Synchronize with store only when meaningful operands/operator change
+  useEffect(() => {
+    if (!computation || !left || !right) return;
     const opSignature = `${left.sourceColumn}:${left.sourceValue}:${operator}:${right.sourceColumn}:${right.sourceValue}`;
 
     if (lastOpSignatureRef.current !== opSignature) {
       lastOpSignatureRef.current = opSignature;
-      setAlgebraRecord({
+      // Use getState() directly to prevent component from subscribing to store updates
+      useLaboratoryStore.getState().setAlgebraRecord({
         operandA: `${left.sourceColumn} = '${left.sourceValue}'`,
         operator,
         operandB: `${right.sourceColumn} = '${right.sourceValue}'`,
-        resultBits,
-        matchCount: count
+        resultBits: computation.resultBits,
+        matchCount: computation.matchCount
       });
     }
+  }, [computation, left, right, operator]);
 
-    setResult(createBitmapResult(
-      resultBits,
-      `Derived (${left.sourceColumn} ${operator} ${right.sourceColumn})`,
-      `${left.sourceValue} ${operator} ${right.sourceValue}`
-    ));
-  }, [availableBitmaps, leftIndex, rightIndex, operator, setAlgebraRecord]);
-
-  React.useEffect(() => {
-    handleCalculate();
-  }, [handleCalculate]);
-
-  if (availableBitmaps.length < 2) {
-    return <div className="text-sm text-neutral-500 p-4 border border-neutral-800 rounded">Generate a dataset with at least 2 distinct values to use the algebra playground.</div>;
+  if (validBitmaps.length < 2) {
+    return (
+      <div className="text-sm text-neutral-500 p-4 border border-neutral-800 rounded bg-neutral-900/30">
+        Generate a dataset with at least 2 distinct values to use the algebra playground.
+      </div>
+    );
   }
 
   return (
@@ -63,11 +94,11 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
         <div className="flex-1">
           <label className="block text-xs text-neutral-500 mb-1">Operand A</label>
           <select 
-            value={leftIndex} 
+            value={safeLeftIndex} 
             onChange={(e) => setLeftIndex(Number(e.target.value))}
             className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-sm outline-none"
           >
-            {availableBitmaps.map((b, i) => (
+            {validBitmaps.map((b, i) => (
               <option key={i} value={i}>{b.sourceColumn} = {String(b.sourceValue)}</option>
             ))}
           </select>
@@ -77,36 +108,36 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
           <label className="block text-xs text-neutral-500 mb-1 text-center">Operator</label>
           <select 
             value={operator} 
-            onChange={(e) => setOperator(e.target.value as any)}
+            onChange={(e) => setOperator(e.target.value as 'AND' | 'OR' | 'XOR')}
             className="w-24 bg-blue-900/20 text-blue-400 border border-blue-800 rounded p-2 text-sm outline-none font-bold text-center"
           >
-            <option>AND</option>
-            <option>OR</option>
-            <option>XOR</option>
+            <option value="AND">AND</option>
+            <option value="OR">OR</option>
+            <option value="XOR">XOR</option>
           </select>
         </div>
 
         <div className="flex-1">
           <label className="block text-xs text-neutral-500 mb-1">Operand B</label>
           <select 
-            value={rightIndex} 
+            value={safeRightIndex} 
             onChange={(e) => setRightIndex(Number(e.target.value))}
             className="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-sm outline-none"
           >
-            {availableBitmaps.map((b, i) => (
+            {validBitmaps.map((b, i) => (
               <option key={i} value={i}>{b.sourceColumn} = {String(b.sourceValue)}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {result && availableBitmaps[leftIndex] && availableBitmaps[rightIndex] && (
+      {computation?.derivedResult && left && right && (
         <div className="flex flex-col gap-4">
-          <div className="opacity-75"><BitmapMatrix bitmap={availableBitmaps[leftIndex]} /></div>
+          <div className="opacity-75"><BitmapMatrix bitmap={left} /></div>
           <div className="flex justify-center text-blue-400 font-bold text-lg">{operator}</div>
-          <div className="opacity-75"><BitmapMatrix bitmap={availableBitmaps[rightIndex]} /></div>
+          <div className="opacity-75"><BitmapMatrix bitmap={right} /></div>
           <div className="flex justify-center text-emerald-400 font-bold text-lg">=</div>
-          <div className="ring-2 ring-emerald-500 rounded"><BitmapMatrix bitmap={result} /></div>
+          <div className="ring-2 ring-emerald-500 rounded"><BitmapMatrix bitmap={computation.derivedResult} /></div>
         </div>
       )}
     </div>

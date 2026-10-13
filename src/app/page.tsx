@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Settings2, Database, Sparkles, Download, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
@@ -18,6 +18,7 @@ import { HelpManual } from '@/components/help/HelpManual';
 import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { QuizApp } from '@/components/quiz/QuizApp';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Quiz' | 'Help' | 'Developed By';
 
 
@@ -312,13 +313,22 @@ export default function LaboratoryDashboard() {
     );
   };
 
-  // Extract all bitmaps into a flat array for Algebra and Compression labs
-  const allBitmaps: Bitmap[] = [];
-  Object.values(bitmapIndex).forEach(colIndex => {
-    Object.values(colIndex).forEach(bmp => {
-      allBitmaps.push(bmp);
-    });
-  });
+  // Extract all bitmaps into a flat array for Algebra and Compression labs (memoized by bitmapIndex)
+  const allBitmaps = useMemo<Bitmap[]>(() => {
+    const list: Bitmap[] = [];
+    if (bitmapIndex && typeof bitmapIndex === 'object') {
+      Object.values(bitmapIndex).forEach(colIndex => {
+        if (colIndex && typeof colIndex === 'object') {
+          Object.values(colIndex).forEach(bmp => {
+            if (bmp && Array.isArray(bmp.bits)) {
+              list.push(bmp);
+            }
+          });
+        }
+      });
+    }
+    return list;
+  }, [bitmapIndex]);
 
   return (
     <div className="h-screen h-[100dvh] max-h-screen bg-neutral-950 text-white font-sans flex flex-col relative overflow-hidden">
@@ -658,13 +668,15 @@ export default function LaboratoryDashboard() {
               <div className="h-full flex flex-col">
                 <h2 className="text-lg font-bold mb-4 text-neutral-300 flex items-center gap-2 shrink-0"><Calculator className="w-5 h-5 text-blue-400"/> Boolean Algebra Playground</h2>
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-                  {allBitmaps.length > 0 ? (
-                    <BitmapAlgebra availableBitmaps={allBitmaps} />
-                  ) : (
-                    <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
-                      <p>Please build the bitmap indexes in the Builder tab first.</p>
-                    </div>
-                  )}
+                  <ErrorBoundary fallbackTitle="Boolean Algebra Playground">
+                    {allBitmaps.length > 0 ? (
+                      <BitmapAlgebra availableBitmaps={allBitmaps} />
+                    ) : (
+                      <div className="flex items-center justify-center h-64 text-neutral-500 bg-neutral-900/30 rounded-lg border border-neutral-800/50">
+                        <p>Please build the bitmap indexes in the Builder tab first.</p>
+                      </div>
+                    )}
+                  </ErrorBoundary>
                 </div>
                 {renderMarkComplete('algebra')}
               </div>

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Bitmap } from '@/lib/bitmap';
@@ -10,7 +12,24 @@ interface BitmapMatrixProps {
 
 export function BitmapMatrix({ bitmap, onBitClick, activeRowId }: BitmapMatrixProps) {
   const parentRef = useRef<HTMLDivElement>(null);
-  const rowCount = bitmap.length;
+
+  if (!bitmap || !Array.isArray(bitmap.bits)) {
+    return (
+      <div className="text-xs text-neutral-500 p-3 border border-neutral-800 rounded bg-neutral-900/40">
+        Bitmap vector unavailable
+      </div>
+    );
+  }
+
+  const rowCount = typeof bitmap.length === 'number' && bitmap.length > 0 ? bitmap.length : bitmap.bits.length;
+
+  if (rowCount === 0) {
+    return (
+      <div className="text-xs text-neutral-500 p-3 border border-neutral-800 rounded bg-neutral-900/40">
+        Empty bitmap vector ({bitmap.sourceColumn || 'Vector'} = {String(bitmap.sourceValue ?? 'N/A')})
+      </div>
+    );
+  }
 
   // We are going to display bits as a matrix. 
   // e.g. 20 bits per row in the UI to make it fit nicely.
@@ -27,9 +46,9 @@ export function BitmapMatrix({ bitmap, onBitClick, activeRowId }: BitmapMatrixPr
   return (
     <div className="flex flex-col space-y-2 border border-neutral-800 rounded p-4 bg-neutral-900/50">
       <div className="flex justify-between items-center text-xs text-neutral-400 border-b border-neutral-800 pb-2">
-        <span className="font-mono text-blue-400">Column: {bitmap.sourceColumn}</span>
-        <span className="font-mono text-amber-400">Value: {String(bitmap.sourceValue)}</span>
-        <span>{bitmap.setBitCount} / {bitmap.length} bits</span>
+        <span className="font-mono text-blue-400">Column: {bitmap.sourceColumn || 'Vector'}</span>
+        <span className="font-mono text-amber-400">Value: {String(bitmap.sourceValue ?? 'N/A')}</span>
+        <span>{bitmap.setBitCount ?? bitmap.bits.filter(b => b === 1).length} / {rowCount} bits</span>
       </div>
 
       <div 
