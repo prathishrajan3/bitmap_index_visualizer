@@ -35,7 +35,7 @@ interface LaboratoryState {
   addColumnDef: () => void;
   removeColumnDef: (colName: string) => void;
   generateData: () => void;
-  loadExternalDataset: (dataset: DatasetRow[]) => void;
+  loadExternalDataset: (dataset: DatasetRow[], columns?: ColumnDefinition[], domain?: string) => void;
   buildIndexes: (columns: string[]) => void;
 }
 
@@ -83,8 +83,31 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
     set({ dataset: newDataset, bitmapIndex: {} });
   },
 
-  loadExternalDataset: (newDataset: DatasetRow[]) => {
-    set({ dataset: newDataset, bitmapIndex: {}, rowCount: newDataset.length });
+  loadExternalDataset: (newDataset: DatasetRow[], newColumns?: ColumnDefinition[], newDomain?: string) => {
+    if (!newDataset || newDataset.length === 0) return;
+    const sample = newDataset[0];
+    const columns: ColumnDefinition[] = newColumns && newColumns.length > 0
+      ? newColumns
+      : Object.keys(sample).filter(k => k !== 'id').map(name => {
+          const distinctVals = new Set(newDataset.map(r => r[name]));
+          return {
+            name,
+            type: 'string',
+            cardinality: distinctVals.size,
+            distribution: 'Uniform'
+          };
+        });
+
+    set(state => ({
+      dataset: newDataset,
+      bitmapIndex: {},
+      rowCount: newDataset.length,
+      schema: {
+        ...state.schema,
+        domain: newDomain || state.schema.domain,
+        columns
+      }
+    }));
   },
 
   buildIndexes: (columnsToIndex: string[]) => {

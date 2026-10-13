@@ -129,10 +129,23 @@ export default function LaboratoryDashboard() {
       const data = await res.json();
       if (data.error) {
         setExplanation(`Error: ${data.error}`);
-      } else if (data.dataset) {
+      } else if (data.dataset && data.dataset.length > 0) {
         skipNextGenerate.current = true;
-        loadExternalDataset(data.dataset);
-        setExplanation("AI successfully generated and loaded a unique dataset!");
+        const columns = data.columns && data.columns.length > 0
+          ? data.columns
+          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string) => {
+              const distinctVals = new Set(data.dataset.map((r: any) => r[name]));
+              return {
+                name,
+                type: 'string',
+                cardinality: distinctVals.size,
+                distribution: 'Uniform'
+              };
+            });
+
+        loadExternalDataset(data.dataset, columns, data.domain || aiDatasetPrompt.trim() || undefined);
+        const colNames = columns.map((c: any) => c.name).join(', ');
+        setExplanation(`AI generated dataset for "${data.domain || aiDatasetPrompt.trim() || 'Custom Theme'}" with columns: ${colNames}!`);
       }
     } catch (e) {
       setExplanation("Failed to contact the AI generator.");

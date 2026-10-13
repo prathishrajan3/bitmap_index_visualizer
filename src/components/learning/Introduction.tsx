@@ -39,7 +39,7 @@ export function Introduction() {
                 Database Index Theory
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Wikipedia-Aligned Reference
+                Foundational Database Architecture
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
                 OLAP & Star Schema
@@ -62,7 +62,7 @@ export function Introduction() {
             <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
             <h2 className="text-xl font-bold text-white">Canonical Example: Logical Structure</h2>
           </div>
-          <span className="text-xs text-neutral-500 font-mono">Source: Wikipedia (Bitmap Index)</span>
+          <span className="text-xs text-neutral-500 font-mono">Binary Vector Mapping</span>
         </div>
 
         <p className="text-neutral-300 text-sm leading-relaxed">
@@ -188,7 +188,7 @@ export function Introduction() {
         <div className="border-b border-neutral-800 pb-4">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Layers className="w-5 h-5 text-indigo-400" />
-            Three Architectural Variations (from Wikipedia)
+            Three Architectural Variations
           </h2>
           <p className="text-neutral-400 text-sm mt-1">
             Modern database engines employ three core design strategies to handle large scales and high-cardinality attributes:
@@ -265,7 +265,7 @@ export function Introduction() {
           In-Memory Bitmaps & PostgreSQL "Bitmap Index Scans"
         </h2>
         <p className="text-neutral-300 text-sm leading-relaxed">
-          As documented on Wikipedia, many enterprise databases that do not store persistent on-disk bitmap indexes still utilize <strong>transient in-memory bitmaps</strong> to accelerate queries.
+          Many enterprise databases that do not store persistent on-disk bitmap indexes still utilize <strong>transient in-memory bitmaps</strong> to accelerate queries.
         </p>
         <p className="text-neutral-400 text-sm leading-relaxed">
           For example, <strong>PostgreSQL (v8.1+)</strong> implements dynamic <em>Bitmap Index Scans</em>. If a query has conditions on multiple separate columns (each indexed with a normal B-Tree), PostgreSQL builds temporary in-memory bit-arrays for each index result, combines them with bitwise AND/OR, and retrieves only the matching disk pages in strict sequential physical order. This eliminates random disk I/O and avoids the exponential need for multi-column composite B-Tree indexes!
@@ -335,7 +335,7 @@ export function Introduction() {
             Acknowledgements & Foundational References
           </h2>
           <p className="text-neutral-400 text-sm mt-1">
-            This laboratory's design, Boolean engine, and benchmarks are developed in accordance with the following seminal papers, textbooks, and resources referenced on Wikipedia:
+            This laboratory's design, Boolean engine, and benchmarks are developed in accordance with the following seminal papers, textbooks, and engineering resources:
           </p>
         </div>
 
