@@ -27,9 +27,15 @@ export interface CityBenchmarkStatistics {
   bitmapP95Ms: number;
   speedup: number | null;
   resultSetsEqual: boolean;
+  winner: 'bitmap' | 'table_scan' | 'tie';
+  indexBuildTimeMs?: number;
+  breakEvenQueries?: number | null;
+  indexMemoryBytes?: number;
 }
 
-// Helper to evaluate a condition on a row
+/**
+ * Fast predicate evaluator for Table Scan with realistic short-circuiting.
+ */
 function evaluateCondition(row: CityEntity, node: CityQueryNode, checks: { count: number }): boolean {
   if (node.type === 'predicate') {
     checks.count++;
@@ -46,7 +52,7 @@ function evaluateCondition(row: CityEntity, node: CityQueryNode, checks: { count
   if (node.type === 'logical') {
     const left = evaluateCondition(row, node.left, checks);
     
-    // Short circuiting logic for accurate predicate checks simulation
+    // Short-circuiting logic
     if (node.operator === 'AND' && !left) return false;
     if (node.operator === 'OR' && left) return true;
     
@@ -59,13 +65,16 @@ function evaluateCondition(row: CityEntity, node: CityQueryNode, checks: { count
   return false;
 }
 
+/**
+ * Executes a conventional Table Scan with predicate check count.
+ */
 export function executeTableScan(ast: CityQueryNode, dataset: CityEntity[]): TableScanMetrics {
   const start = performance.now();
   const matchingIds: string[] = [];
   const checks = { count: 0 };
+  const len = dataset.length;
   
-  // Standard full table scan
-  for (let i = 0; i < dataset.length; i++) {
+  for (let i = 0; i < len; i++) {
     if (evaluateCondition(dataset[i], ast, checks)) {
       matchingIds.push(dataset[i].id);
     }
@@ -75,7 +84,7 @@ export function executeTableScan(ast: CityQueryNode, dataset: CityEntity[]): Tab
   
   return {
     executionTimeMs: end - start,
-    rowsScanned: dataset.length,
+    rowsScanned: len,
     predicateChecks: checks.count,
     matchingRows: matchingIds.length,
     matchingIds
@@ -102,20 +111,31 @@ function percentile(arr: number[], p: number): number {
   return sorted[index];
 }
 
+/**
+ * Runs repeated benchmark executions comparing Table Scan vs. Bitmap Index.
+ * Uses warm-ups, alternating execution order, and adaptive batching for timer stability.
+ */
 export function runRepeatedCityBenchmark(
   ast: CityQueryNode, 
   dataset: CityEntity[], 
   bitmapIndex: CityBitmapIndex,
   warmupIterations = 5,
-  measureIterations = 15
+  measureIterations = 15,
+  indexBuildTimeMs?: number,
+  indexMemoryBytes?: number
 ): CityBenchmarkStatistics {
   
   const datasetIds = dataset.map(e => e.id);
-  
-  // Run warmups
+  const totalRows = dataset.length;
+
+  // Adaptive batching for sub-millisecond timer resolution
+  // Small datasets run so quickly that single runs hit browser timer jitter.
+  const batchSize = totalRows <= 5000 ? 10 : totalRows <= 20000 ? 5 : 1;
+
+  // 1. Warm-up executions (not timed)
   for (let i = 0; i < warmupIterations; i++) {
     executeTableScan(ast, dataset);
-    executeCityQuery(ast, bitmapIndex, dataset.length, datasetIds);
+    executeCityQuery(ast, bitmapIndex, totalRows, datasetIds);
   }
   
   const tableScanTimes: number[] = [];
@@ -124,56 +144,90 @@ export function runRepeatedCityBenchmark(
   let lastTableScanResult: TableScanMetrics | null = null;
   let lastBitmapResult: CityExecutionResult | null = null;
 
-  // Measurement
+  // 2. Timed measurement with counter-balanced alternating order
   for (let i = 0; i < measureIterations; i++) {
-    // Alternate execution order to reduce JIT/GC bias
     if (i % 2 === 0) {
-      lastTableScanResult = executeTableScan(ast, dataset);
-      tableScanTimes.push(lastTableScanResult.executionTimeMs);
-      
-      lastBitmapResult = executeCityQuery(ast, bitmapIndex, dataset.length, datasetIds);
-      bitmapTimes.push(lastBitmapResult.metrics.executionTimeMs);
+      // Table Scan first
+      const tsStart = performance.now();
+      for (let b = 0; b < batchSize; b++) {
+        lastTableScanResult = executeTableScan(ast, dataset);
+      }
+      const tsTime = (performance.now() - tsStart) / batchSize;
+      tableScanTimes.push(tsTime);
+
+      // Bitmap second
+      const bmStart = performance.now();
+      for (let b = 0; b < batchSize; b++) {
+        lastBitmapResult = executeCityQuery(ast, bitmapIndex, totalRows, datasetIds);
+      }
+      const bmTime = (performance.now() - bmStart) / batchSize;
+      bitmapTimes.push(bmTime);
     } else {
-      lastBitmapResult = executeCityQuery(ast, bitmapIndex, dataset.length, datasetIds);
-      bitmapTimes.push(lastBitmapResult.metrics.executionTimeMs);
-      
-      lastTableScanResult = executeTableScan(ast, dataset);
-      tableScanTimes.push(lastTableScanResult.executionTimeMs);
+      // Bitmap first
+      const bmStart = performance.now();
+      for (let b = 0; b < batchSize; b++) {
+        lastBitmapResult = executeCityQuery(ast, bitmapIndex, totalRows, datasetIds);
+      }
+      const bmTime = (performance.now() - bmStart) / batchSize;
+      bitmapTimes.push(bmTime);
+
+      // Table Scan second
+      const tsStart = performance.now();
+      for (let b = 0; b < batchSize; b++) {
+        lastTableScanResult = executeTableScan(ast, dataset);
+      }
+      const tsTime = (performance.now() - tsStart) / batchSize;
+      tableScanTimes.push(tsTime);
     }
   }
 
-  // Fallback if no iterations (shouldn't happen)
+  // Safety fallback
   if (!lastTableScanResult) lastTableScanResult = executeTableScan(ast, dataset);
-  if (!lastBitmapResult) lastBitmapResult = executeCityQuery(ast, bitmapIndex, dataset.length, datasetIds);
+  if (!lastBitmapResult) lastBitmapResult = executeCityQuery(ast, bitmapIndex, totalRows, datasetIds);
 
-  // Result Set Correctness Validation
-  const tableScanSortedIds = [...lastTableScanResult.matchingIds].sort();
-  const bitmapSortedIds = [...lastBitmapResult.matchingIds].sort();
+  // 3. Strict result set equivalence verification
+  const tsIds = lastTableScanResult.matchingIds;
+  const bmIds = lastBitmapResult.matchingIds;
   const resultSetsEqual = 
-    tableScanSortedIds.length === bitmapSortedIds.length &&
-    tableScanSortedIds.every((id, index) => id === bitmapSortedIds[index]);
+    tsIds.length === bmIds.length &&
+    tsIds.every((id, idx) => id === bmIds[idx]);
 
-  // Aggregate Stats
+  // 4. Robust statistics
   const tableScanMedian = median(tableScanTimes);
   const bitmapMedian = median(bitmapTimes);
   
   const matchingRows = lastTableScanResult.matchingRows;
-  const rowsAvoided = dataset.length - matchingRows;
-  const rowReductionPct = (rowsAvoided / dataset.length) * 100;
+  const rowsAvoided = totalRows - matchingRows;
+  const rowReductionPct = totalRows > 0 ? (rowsAvoided / totalRows) * 100 : 0;
 
-  // Calculate speedup without artificial inflation. 
-  // If bitmap takes 0ms (below timer precision), speedup calculation is theoretically infinite.
-  // We'll bound it sensibly or return null if not meaningful.
-  const speedup = bitmapMedian > 0.005 ? (tableScanMedian / bitmapMedian) : null;
+  // Speedup formula: Table Scan median / Bitmap median
+  const speedup = bitmapMedian > 0.0001 ? (tableScanMedian / bitmapMedian) : null;
+
+  // Determine winner with threshold for close calls (within 5% is a tie)
+  let winner: 'bitmap' | 'table_scan' | 'tie' = 'tie';
+  if (speedup !== null) {
+    if (speedup >= 1.05) {
+      winner = 'bitmap';
+    } else if (speedup <= 0.95) {
+      winner = 'table_scan';
+    }
+  }
+
+  // Calculate Break-Even Queries: indexBuildTime / (tableScanTime - bitmapTime)
+  let breakEvenQueries: number | null = null;
+  if (indexBuildTimeMs !== undefined && indexBuildTimeMs > 0 && tableScanMedian > bitmapMedian) {
+    const savingsPerQuery = tableScanMedian - bitmapMedian;
+    breakEvenQueries = Math.ceil(indexBuildTimeMs / savingsPerQuery);
+  }
 
   return {
-    totalRows: dataset.length,
-    matchingRows: matchingRows,
+    totalRows,
+    matchingRows,
     tableScanRowsScanned: lastTableScanResult.rowsScanned,
     tableScanPredicateChecks: lastTableScanResult.predicateChecks,
     bitmapVectorsUsed: lastBitmapResult.metrics.bitmapVectorsUsed,
     bitmapOperations: lastBitmapResult.metrics.operationsPerformed.length,
-    bitmapCandidateRows: lastBitmapResult.metrics.matchingRows, // from setBitCount
+    bitmapCandidateRows: lastBitmapResult.metrics.matchingRows,
     rowsAvoided,
     rowReductionPct,
     tableScanMedianMs: tableScanMedian,
@@ -183,6 +237,10 @@ export function runRepeatedCityBenchmark(
     tableScanP95Ms: percentile(tableScanTimes, 95),
     bitmapP95Ms: percentile(bitmapTimes, 95),
     speedup,
-    resultSetsEqual
+    resultSetsEqual,
+    winner,
+    indexBuildTimeMs,
+    breakEvenQueries,
+    indexMemoryBytes
   };
 }

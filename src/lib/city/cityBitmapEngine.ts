@@ -1,7 +1,29 @@
 import { CityEntity, CityBitmapIndex, CityField } from './cityTypes';
-import { Bitmap } from '@/lib/bitmap/types';
-import { buildDatasetBitmapIndex } from '@/lib/bitmap/builder';
-import { countSetBits, calculateDensity } from '@/lib/bitmap/statistics';
+import { 
+  CityPackedBitmap, 
+  createEmptyPackedBitmap, 
+  createFullPackedBitmap,
+  packedBitmapAnd,
+  packedBitmapOr,
+  packedBitmapXor,
+  packedBitmapNot,
+  extractPackedMatchingIds,
+  countPackedBits,
+  estimatePackedIndexBytes
+} from './packedBitmap';
+
+export { 
+  CityPackedBitmap, 
+  createEmptyPackedBitmap, 
+  createFullPackedBitmap,
+  packedBitmapAnd,
+  packedBitmapOr,
+  packedBitmapXor,
+  packedBitmapNot,
+  extractPackedMatchingIds,
+  countPackedBits,
+  estimatePackedIndexBytes
+};
 
 // Which fields should be indexed
 export const INDEXED_CITY_FIELDS: CityField[] = [
@@ -26,16 +48,39 @@ export const INDEXED_CITY_FIELDS: CityField[] = [
 ];
 
 /**
- * Rebuilds the complete bitmap index for the provided city dataset.
- * Re-uses the existing generic buildDatasetBitmapIndex.
+ * Rebuilds the complete packed bitmap index for the provided city dataset.
+ * Uses a single-pass cache-friendly loop setting bits in 32-bit words via Uint32Array.
+ * 
+ * Each record sets exactly 1 bit in its corresponding categorical value vector.
  */
-export function buildCityBitmapIndex(dataset: CityEntity[]): CityBitmapIndex {
+export function buildCityBitmapIndex(
+  dataset: CityEntity[], 
+  fieldsToIndex: CityField[] = INDEXED_CITY_FIELDS
+): CityBitmapIndex {
+  const count = dataset.length;
+  const wordCount = (count + 31) >>> 5;
   const index: CityBitmapIndex = {};
   
-  for (const field of INDEXED_CITY_FIELDS) {
-    // The existing builder maps each distinct value to a Bitmap array
-    const fieldIndex = buildDatasetBitmapIndex(dataset as any, [field as string]);
-    index[field as string] = fieldIndex[field as string] as Record<string, Bitmap>;
+  for (const field of fieldsToIndex) {
+    index[field as string] = {};
+  }
+
+  // Single-pass construction over all records
+  for (let i = 0; i < count; i++) {
+    const row = dataset[i];
+    const wordIdx = i >>> 5;
+    const bitMask = 1 << (i & 31);
+
+    for (const field of fieldsToIndex) {
+      const val = String(row[field]);
+      const fieldDict = index[field as string];
+      let bmp = fieldDict[val] as CityPackedBitmap;
+      if (!bmp) {
+        bmp = new CityPackedBitmap(count, new Uint32Array(wordCount), field as string, val);
+        fieldDict[val] = bmp;
+      }
+      bmp.words[wordIdx] |= bitMask;
+    }
   }
   
   return index;
@@ -44,27 +89,13 @@ export function buildCityBitmapIndex(dataset: CityEntity[]): CityBitmapIndex {
 /**
  * Creates an empty bitmap of the given length (all 0s).
  */
-export function createEmptyCityBitmap(length: number): Bitmap {
-  return {
-    bits: new Array(length).fill(0),
-    length,
-    setBitCount: 0,
-    density: 0,
-    sourceColumn: 'synthetic',
-    sourceValue: 'empty'
-  };
+export function createEmptyCityBitmap(length: number): CityPackedBitmap {
+  return createEmptyPackedBitmap(length);
 }
 
 /**
  * Creates a full bitmap of the given length (all 1s).
  */
-export function createFullCityBitmap(length: number): Bitmap {
-  return {
-    bits: new Array(length).fill(1),
-    length,
-    setBitCount: length,
-    density: 1,
-    sourceColumn: 'synthetic',
-    sourceValue: 'full'
-  };
+export function createFullCityBitmap(length: number): CityPackedBitmap {
+  return createFullPackedBitmap(length);
 }

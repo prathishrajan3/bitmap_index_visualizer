@@ -1,8 +1,15 @@
 import { Bitmap } from '@/lib/bitmap/types';
 import { CityBitmapIndex, CityQueryNode, AIStructuredCityQuery } from './cityTypes';
-import { bitmapAnd, bitmapOr, bitmapXor, bitmapNot } from '@/lib/bitmap/operations';
-import { countSetBits, calculateDensity } from '@/lib/bitmap/statistics';
-import { createEmptyCityBitmap, createFullCityBitmap } from './cityBitmapEngine';
+import { 
+  CityPackedBitmap, 
+  createEmptyPackedBitmap, 
+  createFullPackedBitmap,
+  packedBitmapAnd, 
+  packedBitmapOr, 
+  packedBitmapXor, 
+  packedBitmapNot,
+  extractPackedMatchingIds
+} from './packedBitmap';
 
 export interface CityExecutionMetrics {
   bitmapVectorsUsed: number;
@@ -22,32 +29,7 @@ export interface CityExecutionResult {
   finalBitmap: Bitmap;
   metrics: CityExecutionMetrics;
   steps: CityExecutionStep[];
-  matchingIds: string[]; // If we map bits back to entity IDs
-}
-
-// Wrapper to cast operations array to Bitmap object
-function wrapOp(op: (a: number[], b: number[]) => number[], a: Bitmap, b: Bitmap, desc: string): Bitmap {
-  const resultBits = op(a.bits, b.bits);
-  return {
-    bits: resultBits,
-    length: resultBits.length,
-    setBitCount: countSetBits(resultBits),
-    density: calculateDensity(resultBits),
-    sourceColumn: 'synthetic_city',
-    sourceValue: desc
-  };
-}
-
-function wrapUnaryOp(op: (a: number[]) => number[], a: Bitmap, desc: string): Bitmap {
-  const resultBits = op(a.bits);
-  return {
-    bits: resultBits,
-    length: resultBits.length,
-    setBitCount: countSetBits(resultBits),
-    density: calculateDensity(resultBits),
-    sourceColumn: 'synthetic_city',
-    sourceValue: desc
-  };
+  matchingIds: string[];
 }
 
 export function executeCityQuery(
@@ -62,75 +44,81 @@ export function executeCityQuery(
     operationsPerformed: [],
     executionTimeMs: 0,
     matchingRows: 0,
-    rowsScanned: datasetSize // A naive table scan would check all rows
+    rowsScanned: datasetSize
   };
   const steps: CityExecutionStep[] = [];
 
-  function evaluate(node: CityQueryNode): Bitmap {
+  function evaluate(node: CityQueryNode): CityPackedBitmap {
     if (node.type === 'predicate') {
       const fieldIndex = index[node.column];
       if (!fieldIndex) {
-        return createEmptyCityBitmap(datasetSize);
+        const empty = createEmptyPackedBitmap(datasetSize);
+        steps.push({ node, resultBitmap: empty, description: `Missing index for ${node.column}` });
+        return empty;
       }
 
+      const rawBitmap = fieldIndex[node.value];
+      const bitmap = (rawBitmap instanceof CityPackedBitmap)
+        ? rawBitmap
+        : (rawBitmap ? new CityPackedBitmap(datasetSize, (rawBitmap as any).words || (rawBitmap as any).bits, node.column, node.value) : createEmptyPackedBitmap(datasetSize));
+
+      metrics.bitmapVectorsUsed++;
+
       if (node.operator === '=') {
-        const bitmap = fieldIndex[node.value] || createEmptyCityBitmap(datasetSize);
-        metrics.bitmapVectorsUsed++;
         steps.push({ node, resultBitmap: bitmap, description: `Lookup ${node.column} = ${node.value}` });
         return bitmap;
       } else if (node.operator === '!=') {
-        const bitmap = fieldIndex[node.value] || createEmptyCityBitmap(datasetSize);
-        metrics.bitmapVectorsUsed++;
         metrics.operationsPerformed.push('NOT');
-        const inverted = wrapUnaryOp(bitmapNot, bitmap, `Lookup ${node.column} != ${node.value}`);
+        const inverted = packedBitmapNot(bitmap);
+        inverted.sourceColumn = node.column;
+        inverted.sourceValue = `!= ${node.value}`;
         steps.push({ node, resultBitmap: inverted, description: `Lookup ${node.column} != ${node.value} (NOT)` });
         return inverted;
       }
-      return createEmptyCityBitmap(datasetSize);
+      return createEmptyPackedBitmap(datasetSize);
     } else if (node.type === 'not') {
       const operand = evaluate(node.operand);
-      const result = wrapUnaryOp(bitmapNot, operand, 'Logical NOT');
       metrics.operationsPerformed.push('NOT');
+      const result = packedBitmapNot(operand);
+      result.sourceColumn = 'derived';
+      result.sourceValue = 'NOT';
       steps.push({ node, resultBitmap: result, description: 'Logical NOT' });
       return result;
     } else if (node.type === 'logical') {
       const left = evaluate(node.left);
       const right = evaluate(node.right);
       
-      let result: Bitmap;
+      let result: CityPackedBitmap;
       if (node.operator === 'AND') {
-        result = wrapOp(bitmapAnd, left, right, 'Logical AND');
+        result = packedBitmapAnd(left, right);
         metrics.operationsPerformed.push('AND');
       } else if (node.operator === 'OR') {
-        result = wrapOp(bitmapOr, left, right, 'Logical OR');
+        result = packedBitmapOr(left, right);
         metrics.operationsPerformed.push('OR');
       } else if (node.operator === 'XOR') {
-        result = wrapOp(bitmapXor, left, right, 'Logical XOR');
+        result = packedBitmapXor(left, right);
         metrics.operationsPerformed.push('XOR');
       } else {
-        result = createEmptyCityBitmap(datasetSize);
+        result = createEmptyPackedBitmap(datasetSize);
       }
 
+      result.sourceColumn = 'derived';
+      result.sourceValue = `Logical ${node.operator}`;
       steps.push({ node, resultBitmap: result, description: `Logical ${node.operator}` });
       return result;
     }
     
-    return createEmptyCityBitmap(datasetSize);
+    return createEmptyPackedBitmap(datasetSize);
   }
 
   const finalBitmap = evaluate(ast);
   
-  // Extract matching IDs
-  const matchingIds: string[] = [];
-  for (let i = 0; i < finalBitmap.length; i++) {
-    if (finalBitmap.bits[i] === 1) {
-      matchingIds.push(datasetIds[i]);
-    }
-  }
+  // Fast word-level matching ID extraction
+  const matchingIds = extractPackedMatchingIds(finalBitmap.words, datasetSize, datasetIds);
 
   const end = performance.now();
   metrics.executionTimeMs = end - start;
-  metrics.matchingRows = finalBitmap.setBitCount;
+  metrics.matchingRows = matchingIds.length;
 
   return { finalBitmap, metrics, steps, matchingIds };
 }
