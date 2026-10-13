@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, Database, Settings2, Sparkles, Blocks, Calculator, Terminal, GitCompare, Table2 } from 'lucide-react';
+import { HelpCircle, Database, Settings2, Sparkles, Blocks, Calculator, Terminal, Table2, BookOpen, Brain, User } from 'lucide-react';
 
 export function HelpManual() {
   return (
@@ -81,14 +81,22 @@ export function HelpManual() {
       {/* 4. Tab Navigation Workflow */}
       <div className="bg-neutral-900/30 border border-neutral-800 rounded-xl p-6">
         <h2 className="text-xl font-bold text-neutral-200 mb-4 text-blue-400">4. Processing & Interpreting Output</h2>
-        <p className="text-neutral-400 mb-6">Navigate through the top tabs in order from left to right to process the data.</p>
+        <p className="text-neutral-400 mb-6">Navigate through the top tabs in order from left to right to explore the laboratory features.</p>
         
         <div className="space-y-4">
+          <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
+            <BookOpen className="w-6 h-6 text-sky-400 shrink-0" />
+            <div>
+              <h3 className="font-semibold text-neutral-200">Introduction Tab</h3>
+              <p className="text-sm text-neutral-400">Read the foundational principles behind bitmap indexes, how bit-vectors encode records, why bitwise operations make them fast, and explore referenced academic papers, textbooks, and video lectures.</p>
+            </div>
+          </div>
+
           <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
             <Table2 className="w-6 h-6 text-blue-400 shrink-0" />
             <div>
               <h3 className="font-semibold text-neutral-200">Dataset Tab</h3>
-              <p className="text-sm text-neutral-400">View the raw tabular data that was generated or uploaded. This is the "before" state.</p>
+              <p className="text-sm text-neutral-400">View the raw tabular data that was generated or uploaded. This is the unindexed dataset state.</p>
             </div>
           </div>
 
@@ -96,7 +104,7 @@ export function HelpManual() {
             <Blocks className="w-6 h-6 text-purple-400 shrink-0" />
             <div>
               <h3 className="font-semibold text-neutral-200">Builder Tab (Crucial Step)</h3>
-              <p className="text-sm text-neutral-400">Click <strong>Build Bitmap Indexes</strong>. The engine will scan your dataset and generate an array of bits (1s and 0s) for every unique value in every column.</p>
+              <p className="text-sm text-neutral-400">Click <strong>Build Bitmap Indexes</strong>. The engine will scan your dataset and construct dense bit-arrays (1s and 0s) for every distinct column value.</p>
             </div>
           </div>
 
@@ -104,7 +112,7 @@ export function HelpManual() {
             <Calculator className="w-6 h-6 text-emerald-400 shrink-0" />
             <div>
               <h3 className="font-semibold text-neutral-200">Matrix & Algebra Tabs</h3>
-              <p className="text-sm text-neutral-400"><strong>Matrix:</strong> Visually inspect the generated bits.<br/><strong>Algebra:</strong> Perform raw bitwise operations (AND, OR, NOT) between different attributes to see how the database filters data mathematically.</p>
+              <p className="text-sm text-neutral-400"><strong>Matrix:</strong> Visually inspect the generated bit vectors across all columns.<br/><strong>Algebra:</strong> Perform raw Boolean operations (AND, OR, NOT) between attributes to observe how the database filters data mathematically.</p>
             </div>
           </div>
 
@@ -112,15 +120,23 @@ export function HelpManual() {
             <Terminal className="w-6 h-6 text-orange-400 shrink-0" />
             <div>
               <h3 className="font-semibold text-neutral-200">Neon Query Tab</h3>
-              <p className="text-sm text-neutral-400">Write an SQL query or ask a natural language question. The engine will parse your query into an Abstract Syntax Tree (AST), convert it into bitwise operations, and execute it against your bitmaps in real-time.</p>
+              <p className="text-sm text-neutral-400">Write an SQL query or ask in natural language. The engine parses the query into an AST, translates it into bitwise vector math, and executes it in real-time.</p>
             </div>
           </div>
 
           <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
-            <GitCompare className="w-6 h-6 text-red-400 shrink-0" />
+            <Brain className="w-6 h-6 text-pink-400 shrink-0" />
             <div>
-              <h3 className="font-semibold text-neutral-200">Compare Tab</h3>
-              <p className="text-sm text-neutral-400">Run a benchmark test comparing a standard Row-by-Row Table Scan against the Bitmap Index logic to see the speedup multiplier.</p>
+              <h3 className="font-semibold text-neutral-200">Quiz Tab</h3>
+              <p className="text-sm text-neutral-400">Test your knowledge with an interactive 4-option MCQ quiz. Choose your question count, difficulty level (Easy, Medium, Hard), and practice either with AI-crafted questions or real competitive exam PYQs (GATE, ISRO, NET).</p>
+            </div>
+          </div>
+
+          <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
+            <User className="w-6 h-6 text-indigo-400 shrink-0" />
+            <div>
+              <h3 className="font-semibold text-neutral-200">Developed By Tab</h3>
+              <p className="text-sm text-neutral-400">Presents academic project credentials, student details (Name, Register Number), and faculty supervision information.</p>
             </div>
           </div>
         </div>

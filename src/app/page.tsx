@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { Settings2, Database, Sparkles, Download, GitCompare, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { Settings2, Database, Sparkles, Download, Upload, Search, Terminal, Shuffle, Blocks, Calculator, FileArchive, Table2, LayoutGrid, GraduationCap, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 import { useLearningStore } from '@/store/useLearningStore';
@@ -11,7 +11,6 @@ import { buildDatasetBitmapIndex, Bitmap } from '@/lib/bitmap';
 import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
 import { BitmapBuilder } from '@/components/bitmap/BitmapBuilder';
 import { BitmapAlgebra } from '@/components/bitmap/BitmapAlgebra';
-import { CompareLab } from '@/components/compare/CompareLab';
 import { Introduction } from '@/components/learning/Introduction';
 import { BookOpen, User, HelpCircle, Brain } from 'lucide-react';
 import { DeveloperInfo } from '@/components/about/DeveloperInfo';
@@ -19,7 +18,7 @@ import { HelpManual } from '@/components/help/HelpManual';
 import { DownloadReportBtn } from '@/components/report/DownloadReportBtn';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { QuizApp } from '@/components/quiz/QuizApp';
-type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Compare' | 'Quiz' | 'Help' | 'Developed By';
+type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Quiz' | 'Help' | 'Developed By';
 
 
 export default function LaboratoryDashboard() {
@@ -163,7 +162,6 @@ export default function LaboratoryDashboard() {
           activeRow,
           activeTab,
           sqlQuery,
-          compareMetrics: activeTab === 'Compare' ? require('@/lib/compareEngine').calculateMetrics(dataset, bitmapIndex, sqlQuery, schema.columns.length) : undefined,
           prompt: tutorPrompt
         })
       });
@@ -283,9 +281,6 @@ export default function LaboratoryDashboard() {
         <div className="flex gap-4 items-center">
           <ThemeToggle />
           <DownloadReportBtn type="lab" />
-          <button onClick={() => setActiveTab('Compare')} className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeTab === 'Compare' ? 'bg-amber-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700'}`}>
-            <GitCompare className="w-4 h-4" /> Compare
-          </button>
           <Link href="/city" className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-sm transition-colors">
             <LayoutGrid className="w-4 h-4" /> Smart City
           </Link>
@@ -742,15 +737,6 @@ export default function LaboratoryDashboard() {
             )}
             
 
-            {activeTab === 'Compare' && (
-              <div className="h-full">
-                <CompareLab 
-                  sqlQuery={sqlQuery} 
-                  onNavigate={(tab) => setActiveTab(tab as Tab)} 
-                />
-              </div>
-            )}
-            
           </div>
         </main>
 
