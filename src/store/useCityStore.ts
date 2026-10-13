@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import { CityEntity, CityBitmapIndex, CityQueryNode } from '@/lib/city/cityTypes';
+import { 
+  CityIssueFilterState, 
+  CityScanScope, 
+  DEFAULT_CITY_ISSUE_FILTERS 
+} from '@/lib/city/cityQueries';
 
 interface CityState {
   // Data
@@ -16,6 +21,9 @@ interface CityState {
   // UI & Query
   selectedEntityId: string | null;
   selectedDistrict: string | null;
+  issueFilters: CityIssueFilterState;
+  scanScope: CityScanScope;
+  isScalingBenchmarkRunning: boolean;
   activeQuery: CityQueryNode | null;
   queryResultEntityIds: Set<string>;
   heatmapMode: 'None' | 'Traffic' | 'Pollution' | 'Emergency' | 'Risk';
@@ -34,6 +42,9 @@ interface CityState {
   setWeather: (weather: 'Clear' | 'Cloudy' | 'Rain' | 'Storm') => void;
   setSelectedEntityId: (id: string | null) => void;
   setSelectedDistrict: (district: string | null) => void;
+  setIssueFilters: (filters: Partial<CityIssueFilterState> | ((prev: CityIssueFilterState) => CityIssueFilterState)) => void;
+  setScanScope: (scope: CityScanScope) => void;
+  setIsScalingBenchmarkRunning: (running: boolean) => void;
   setActiveQuery: (query: CityQueryNode | null, resultIds: Set<string>) => void;
   setHeatmapMode: (mode: 'None' | 'Traffic' | 'Pollution' | 'Emergency' | 'Risk') => void;
   setDemoMode: (active: boolean) => void;
@@ -52,7 +63,10 @@ export const useCityStore = create<CityState>((set) => ({
   weather: 'Clear',
   
   selectedEntityId: null,
-  selectedDistrict: null,
+  selectedDistrict: 'Central Business District',
+  issueFilters: { ...DEFAULT_CITY_ISSUE_FILTERS },
+  scanScope: 'district',
+  isScalingBenchmarkRunning: false,
   activeQuery: null,
   queryResultEntityIds: new Set(),
   heatmapMode: 'None',
@@ -68,10 +82,15 @@ export const useCityStore = create<CityState>((set) => ({
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setWeather: (weather) => set({ weather }),
   setSelectedEntityId: (id) => set({ selectedEntityId: id }),
+  setSelectedDistrict: (district) => set({ selectedDistrict: district }),
+  setIssueFilters: (filters) => set((state) => ({
+    issueFilters: typeof filters === 'function' ? filters(state.issueFilters) : { ...state.issueFilters, ...filters }
+  })),
+  setScanScope: (scope) => set({ scanScope: scope }),
+  setIsScalingBenchmarkRunning: (running) => set({ isScalingBenchmarkRunning: running }),
   setActiveQuery: (query, resultIds) => set({ activeQuery: query, queryResultEntityIds: resultIds }),
   setHeatmapMode: (mode) => set({ heatmapMode: mode }),
   setDemoMode: (active) => set({ demoMode: active }),
   setEducationalMode: (active) => set({ educationalMode: active }),
-  setSelectedDistrict: (district) => set({ selectedDistrict: district }),
   setLastBenchmarkResult: (result) => set({ lastBenchmarkResult: result })
 }));

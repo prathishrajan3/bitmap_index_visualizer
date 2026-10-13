@@ -1,11 +1,17 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useCityStore } from '@/store/useCityStore';
 import { generateCityData } from '@/lib/city/cityGenerator';
 import { buildCityBitmapIndex } from '@/lib/city/cityBitmapEngine';
 import { runRepeatedCityBenchmark, CityBenchmarkStatistics, MIN_RELIABLE_RESOLUTION_MS } from '@/lib/city/cityStatistics';
 import { estimatePackedIndexBytes } from '@/lib/city/packedBitmap';
 import { CityQueryNode } from '@/lib/city/cityTypes';
+import { 
+  tryBuildCityQueryAST, 
+  CityQueryBuildResult, 
+  CITY_ISSUE_DEFINITIONS 
+} from '@/lib/city/cityQueries';
 import { 
   Play, 
   Activity, 
@@ -18,64 +24,13 @@ import {
   Info, 
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AlertTriangle,
+  RotateCcw,
+  Building2,
+  Globe2,
+  Tag
 } from 'lucide-react';
-
-interface WorkloadDefinition {
-  id: string;
-  name: string;
-  label: string;
-  selectivity: string;
-  description: string;
-  ast: CityQueryNode;
-}
-
-const WORKLOADS: WorkloadDefinition[] = [
-  {
-    id: 'workload_a',
-    name: 'Workload A: Complex District Alarm',
-    label: 'A: Complex CBD',
-    selectivity: '~2.5% Selectivity',
-    description: "district = 'Central Business District' AND (trafficLevel = 'Severe' OR riskLevel = 'Critical')",
-    ast: {
-      type: 'logical',
-      operator: 'AND',
-      left: { type: 'predicate', column: 'district', operator: '=', value: 'Central Business District' },
-      right: {
-        type: 'logical',
-        operator: 'OR',
-        left: { type: 'predicate', column: 'trafficLevel', operator: '=', value: 'Severe' },
-        right: { type: 'predicate', column: 'riskLevel', operator: '=', value: 'Critical' }
-      }
-    }
-  },
-  {
-    id: 'workload_b',
-    name: 'Workload B: Selective Emergency Dispatch',
-    label: 'B: Selective Fire',
-    selectivity: '~0.3% Selectivity',
-    description: "incidentType = 'Fire' AND emergencyPriority = 'Critical'",
-    ast: {
-      type: 'logical',
-      operator: 'AND',
-      left: { type: 'predicate', column: 'incidentType', operator: '=', value: 'Fire' },
-      right: { type: 'predicate', column: 'emergencyPriority', operator: '=', value: 'Critical' }
-    }
-  },
-  {
-    id: 'workload_c',
-    name: 'Workload C: Broad Road Grid Analysis',
-    label: 'C: Broad Grid',
-    selectivity: '~40.0% Selectivity',
-    description: "trafficLevel = 'Severe' OR roadType = 'Arterial'",
-    ast: {
-      type: 'logical',
-      operator: 'OR',
-      left: { type: 'predicate', column: 'trafficLevel', operator: '=', value: 'Severe' },
-      right: { type: 'predicate', column: 'roadType', operator: '=', value: 'Arterial' }
-    }
-  }
-];
 
 const STANDARD_SIZES = [2000, 5000, 10000, 20000, 30000];
 const EXTENDED_SIZES = [2000, 5000, 10000, 20000, 30000, 50000, 100000, 250000];
@@ -100,26 +55,76 @@ function formatTiming(timeMs: number, isSubRes?: boolean): string {
   return `${timeMs.toFixed(2)} ms`;
 }
 
+interface BenchmarkSnapshot {
+  summary: string;
+  ast: CityQueryNode;
+  selectionKey: string;
+  scope: string;
+  district: string | null;
+  issueLabels: string[];
+}
+
 export function CityScalingBenchmark() {
-  const [selectedWorkload, setSelectedWorkload] = useState<string>('workload_a');
+  const { 
+    selectedDistrict, 
+    issueFilters, 
+    scanScope, 
+    isScalingBenchmarkRunning, 
+    setIsScalingBenchmarkRunning 
+  } = useCityStore();
+
   const [useExtendedSuite, setUseExtendedSuite] = useState<boolean>(true);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
   const [results, setResults] = useState<Record<number, CityBenchmarkStatistics>>({});
   const [currentSize, setCurrentSize] = useState<number | null>(null);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
+  const [benchmarkSnapshot, setBenchmarkSnapshot] = useState<BenchmarkSnapshot | null>(null);
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null);
 
-  const activeWorkload = WORKLOADS.find(w => w.id === selectedWorkload) || WORKLOADS[0];
   const activeSizes = useExtendedSuite ? EXTENDED_SIZES : STANDARD_SIZES;
 
+  // Build the live query AST from the Performance Lab selection
+  const liveQueryConfig: CityQueryBuildResult = tryBuildCityQueryAST({
+    district: selectedDistrict,
+    issues: issueFilters,
+    isCityWide: scanScope === 'city'
+  });
+
+  // Unique signature of current UI selection to track staleness
+  const currentSelectionKey = `${scanScope}:${selectedDistrict}:${Object.entries(issueFilters)
+    .sort()
+    .map(([k, v]) => `${k}:${v}`)
+    .join(',')}`;
+
+  const isStale = benchmarkSnapshot !== null && 
+    benchmarkSnapshot.selectionKey !== currentSelectionKey && 
+    Object.keys(results).length > 0;
+
   const runScalingExperiment = async () => {
-    setIsRunning(true);
+    if (!liveQueryConfig.isValid || !liveQueryConfig.ast) {
+      setBenchmarkError(liveQueryConfig.error || "Cannot run benchmark with invalid query selection.");
+      return;
+    }
+
+    setBenchmarkError(null);
+    setIsScalingBenchmarkRunning(true);
     setResults({});
+
+    // Snapshot the exact AST and selection configuration at run start
+    const snapshot: BenchmarkSnapshot = {
+      summary: liveQueryConfig.summary,
+      ast: liveQueryConfig.ast,
+      selectionKey: currentSelectionKey,
+      scope: scanScope === 'city' ? 'City-Wide' : (selectedDistrict || 'District'),
+      district: selectedDistrict,
+      issueLabels: [...liveQueryConfig.selectedIssueLabels]
+    };
+    setBenchmarkSnapshot(snapshot);
 
     try {
       for (const size of activeSizes) {
         setCurrentSize(size);
         
-        // Yield to browser UI thread to keep animations smooth and responsive
+        // Yield to browser UI thread to keep animations and progress indicators responsive
         await new Promise(r => setTimeout(r, 40));
 
         // Generate isolated deterministic benchmark dataset
@@ -135,9 +140,9 @@ export function CityScalingBenchmark() {
         // Calculate packed index memory
         const memoryBytes = estimatePackedIndexBytes(testIndex, size);
 
-        // Run repeated benchmark with adaptive-duration batching (20–50 ms intervals)
+        // Run repeated benchmark using the exact snapshotted AST for BOTH Table Scan and Bitmap
         const stats = runRepeatedCityBenchmark(
-          activeWorkload.ast, 
+          snapshot.ast, 
           testData, 
           testIndex, 
           5, 
@@ -149,12 +154,19 @@ export function CityScalingBenchmark() {
         
         setResults(prev => ({ ...prev, [size]: stats }));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Scaling test error:", e);
+      setBenchmarkError(e?.message || "An unexpected error occurred during benchmark execution.");
     } finally {
-      setIsRunning(false);
+      setIsScalingBenchmarkRunning(false);
       setCurrentSize(null);
     }
+  };
+
+  const handleClearResults = () => {
+    setResults({});
+    setBenchmarkSnapshot(null);
+    setBenchmarkError(null);
   };
 
   // Find maximum execution time for SVG bar chart scaling
@@ -162,6 +174,9 @@ export function CityScalingBenchmark() {
     ...Object.values(results).map(r => Math.max(r.tableScanMedianMs, r.bitmapMedianMs)),
     0.05
   );
+
+  const displayedSummary = benchmarkSnapshot ? benchmarkSnapshot.summary : liveQueryConfig.summary;
+  const hasResults = Object.keys(results).length > 0;
 
   return (
     <div className="p-4 flex flex-col gap-4 bg-neutral-900 border-t border-neutral-800">
@@ -174,75 +189,122 @@ export function CityScalingBenchmark() {
               <Activity className="w-4 h-4 text-emerald-500" /> Scaling Experiment
             </h3>
             <p className="text-[10px] text-neutral-400 mt-0.5">
-              Adaptive-batch benchmark comparing Packed Bitmap vs. Table Scan across scales.
+              Benchmarks your active Performance Lab selection across dataset sizes.
             </p>
           </div>
-          <button 
-            onClick={runScalingExperiment}
-            disabled={isRunning}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm"
-          >
-            {isRunning ? (
-              <>
-                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Running...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3 h-3 fill-white" />
-                <span>Run Benchmark</span>
-              </>
+          <div className="flex items-center gap-2">
+            {hasResults && (
+              <button
+                onClick={handleClearResults}
+                disabled={isScalingBenchmarkRunning}
+                className="px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded text-xs font-medium flex items-center gap-1.5 transition-colors border border-neutral-700 disabled:opacity-50"
+                title="Clear current benchmark results"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
             )}
-          </button>
-        </div>
-
-        {/* Workload Selector Tabs */}
-        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-md border border-neutral-800 text-[10px]">
-          {WORKLOADS.map(w => (
-            <button
-              key={w.id}
-              onClick={() => {
-                if (!isRunning) {
-                  setSelectedWorkload(w.id);
-                  setResults({});
-                }
-              }}
-              disabled={isRunning}
-              className={`flex-1 py-1 px-2 rounded font-medium transition-all text-center ${
-                selectedWorkload === w.id 
-                  ? 'bg-neutral-800 text-white shadow-sm font-semibold text-emerald-400 border border-neutral-700/60' 
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
+            <button 
+              onClick={runScalingExperiment}
+              disabled={isScalingBenchmarkRunning || !liveQueryConfig.isValid}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold flex items-center gap-2 disabled:opacity-50 transition-colors shadow-sm"
             >
-              {w.label}
+              {isScalingBenchmarkRunning ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Running...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3 fill-white" />
+                  <span>Run Benchmark</span>
+                </>
+              )}
             </button>
-          ))}
+          </div>
         </div>
 
-        {/* Workload Metadata & Suite Range */}
-        <div className="flex items-center justify-between bg-neutral-950/60 px-2.5 py-1.5 rounded border border-neutral-800/80 text-[10px]">
-          <div className="flex items-center gap-2 text-neutral-400 truncate mr-2">
-            <span className="font-mono text-cyan-400 font-semibold">{activeWorkload.selectivity}</span>
-            <span className="text-neutral-600">•</span>
-            <span className="font-mono text-neutral-300 truncate" title={activeWorkload.description}>
-              {activeWorkload.description}
-            </span>
+        {/* Dynamic Query Selection Display */}
+        <div className="bg-black/50 p-2.5 rounded-md border border-neutral-800 flex flex-col gap-2 text-[11px]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-medium">
+              <span className="text-neutral-400">Target Query:</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                {scanScope === 'city' ? <Globe2 className="w-2.5 h-2.5" /> : <Building2 className="w-2.5 h-2.5" />}
+                {scanScope === 'city' ? 'City-Wide Scope' : (selectedDistrict || 'District')}
+              </span>
+            </div>
+            
+            <label className="flex items-center gap-1.5 text-[10px] text-neutral-400 shrink-0 cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                checked={useExtendedSuite}
+                onChange={(e) => {
+                  if (!isScalingBenchmarkRunning) {
+                    setUseExtendedSuite(e.target.checked);
+                    setResults({});
+                  }
+                }}
+                disabled={isScalingBenchmarkRunning}
+                className="rounded bg-neutral-900 border-neutral-700 text-emerald-500 focus:ring-0 w-3 h-3"
+              />
+              <span>250K Scale</span>
+            </label>
           </div>
-          <label className="flex items-center gap-1.5 text-[10px] text-neutral-400 shrink-0 cursor-pointer select-none">
-            <input 
-              type="checkbox" 
-              checked={useExtendedSuite}
-              onChange={(e) => {
-                if (!isRunning) {
-                  setUseExtendedSuite(e.target.checked);
-                  setResults({});
-                }
-              }}
-              disabled={isRunning}
-              className="rounded bg-neutral-900 border-neutral-700 text-emerald-500 focus:ring-0 w-3 h-3"
-            />
-            <span>250K Scale</span>
-          </label>
+
+          {/* Active Issue Tags */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-neutral-500 font-mono">Issues:</span>
+            {liveQueryConfig.selectedIssueLabels.length > 0 ? (
+              liveQueryConfig.selectedIssueLabels.map(label => (
+                <span key={label} className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-neutral-800 text-neutral-300 border border-neutral-700">
+                  {label}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] text-amber-400 italic">None selected</span>
+            )}
+          </div>
+
+          {/* Logic Summary */}
+          <div className="text-[10px] font-mono text-neutral-400 bg-neutral-950/60 p-1.5 rounded border border-neutral-800/60 truncate" title={displayedSummary}>
+            <span className="text-neutral-500 font-sans">Logic: </span>
+            <span className="text-neutral-300">{displayedSummary}</span>
+          </div>
+
+          {/* Stale Results Warning Banner */}
+          {isStale && (
+            <div className="p-2 rounded bg-amber-950/40 border border-amber-800/60 text-[10px] text-amber-300 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  Selection modified in Issue Scanner. Results below reflect: <strong>{benchmarkSnapshot?.summary}</strong>.
+                </span>
+              </div>
+              <button 
+                onClick={runScalingExperiment}
+                className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold shrink-0 transition-colors"
+              >
+                Re-Run
+              </button>
+            </div>
+          )}
+
+          {/* Query Validation Error Banner */}
+          {!liveQueryConfig.isValid && (
+            <div className="p-2 rounded bg-rose-950/40 border border-rose-800/60 text-[10px] text-rose-300 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>{liveQueryConfig.error}</span>
+            </div>
+          )}
+
+          {/* Benchmark Execution Error Banner */}
+          {benchmarkError && (
+            <div className="p-2 rounded bg-rose-950/40 border border-rose-800/60 text-[10px] text-rose-300 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>Benchmark error: {benchmarkError}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -269,7 +331,7 @@ export function CityScalingBenchmark() {
                   <tr key={size} className="bg-emerald-500/10">
                     <td className="px-3 py-2.5 font-bold text-white">{size.toLocaleString()}</td>
                     <td colSpan={5} className="px-3 py-2.5 text-emerald-400 text-center animate-pulse">
-                      Measuring adaptive batches (20–50 ms intervals)...
+                      Benchmarking {size.toLocaleString()} records...
                     </td>
                   </tr>
                 );
@@ -300,37 +362,42 @@ export function CityScalingBenchmark() {
                   <td className="px-3 py-2 text-neutral-300">
                     <div className="flex items-center gap-1">
                       <span>{res.matchingRows.toLocaleString()}</span>
-                      {res.resultSetsEqual && (
+                      {res.resultSetsEqual ? (
                         <span title="Result sets 100% identical">
                           <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                        </span>
+                      ) : (
+                        <span title="WARNING: Result set mismatch between Table Scan and Bitmap!" className="text-rose-500 font-bold">
+                          <AlertTriangle className="w-3 h-3" />
                         </span>
                       )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-center">
-                    {res.winner === 'bitmap' && (
+                    {!res.resultSetsEqual ? (
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                        MISMATCH
+                      </span>
+                    ) : res.winner === 'bitmap' ? (
                       <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                         BITMAP
                       </span>
-                    )}
-                    {res.winner === 'table_scan' && (
+                    ) : res.winner === 'table_scan' ? (
                       <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
                         SCAN
                       </span>
-                    )}
-                    {res.winner === 'tie' && (
+                    ) : res.winner === 'tie' ? (
                       <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-neutral-800 text-neutral-400">
                         TIE
                       </span>
-                    )}
-                    {res.winner === 'inconclusive' && (
+                    ) : (
                       <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-neutral-800 text-neutral-500" title="Timing below reliable resolution">
                         INCONCLUSIVE
                       </span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    {res.speedup !== null ? (
+                    {res.resultSetsEqual && res.speedup !== null ? (
                       <span className={`font-bold ${
                         res.speedup >= 2.0 
                           ? 'text-emerald-400' 
@@ -352,7 +419,7 @@ export function CityScalingBenchmark() {
       </div>
 
       {/* Comparative Performance Visualizer (Chart) */}
-      {Object.keys(results).length > 0 && (
+      {hasResults && (
         <div className="p-3 bg-neutral-950/80 rounded-md border border-neutral-800 flex flex-col gap-2">
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-neutral-300 flex items-center gap-1.5">
@@ -400,7 +467,7 @@ export function CityScalingBenchmark() {
                     </div>
                   </div>
                   <span className="w-12 text-right shrink-0 font-bold text-emerald-400">
-                    {res.speedup !== null ? (res.bitmapSubResolution ? `>${Math.floor(res.speedup)}x` : `${res.speedup.toFixed(1)}x`) : ''}
+                    {res.resultSetsEqual && res.speedup !== null ? (res.bitmapSubResolution ? `>${Math.floor(res.speedup)}x` : `${res.speedup.toFixed(1)}x`) : ''}
                   </span>
                 </div>
               );
@@ -417,7 +484,7 @@ export function CityScalingBenchmark() {
         >
           <div className="flex items-center gap-2">
             <HardDrive className="w-3.5 h-3.5 text-blue-400" />
-            <span>Adaptive Batching &amp; Break-Even Analysis</span>
+            <span>Dynamic Benchmark Technical Details &amp; Break-Even Analysis</span>
           </div>
           {showTechDetails ? <ChevronUp className="w-3.5 h-3.5 text-neutral-500" /> : <ChevronDown className="w-3.5 h-3.5 text-neutral-500" />}
         </button>
@@ -425,7 +492,8 @@ export function CityScalingBenchmark() {
         {showTechDetails && (
           <div className="p-3 border-t border-neutral-800/80 flex flex-col gap-3 text-xs">
             <p className="text-[11px] text-neutral-400 leading-relaxed">
-              Measurements use <strong>adaptive-duration batching (20–50 ms intervals)</strong> to completely eliminate sub-millisecond timer quantization artifacts. Hot-path query execution removes internal timer calls and consumes all materialized IDs.
+              In a continuous smart city monitoring system, bitmap indexes are built once and reused across thousands of live queries.
+              The table below isolates the one-time build cost, index RAM footprint, and the break-even query threshold for your currently selected query.
             </p>
 
             <div className="overflow-x-auto">
@@ -466,7 +534,7 @@ export function CityScalingBenchmark() {
             <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-800/40 text-[10px] text-emerald-200/90 leading-normal flex items-start gap-2">
               <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
               <div>
-                <strong>Timing Accuracy:</strong> Browser <code className="text-emerald-300 font-mono">performance.now()</code> has reduced timer resolution (5–20 µs). By adaptively batching executions into 20–50 ms intervals, timing noise is divided across thousands of queries, providing sub-nanosecond precision and preventing false zero-microsecond measurements.
+                <strong>Shared State Architecture:</strong> The Scaling Experiment is bound directly to the Performance Lab's District and Issue filters in <code className="text-emerald-300 font-mono">useCityStore</code>. Both Table Scan and Packed Bitmap Index evaluate the exact same dynamically generated AST across the full synthetic dataset.
               </div>
             </div>
           </div>

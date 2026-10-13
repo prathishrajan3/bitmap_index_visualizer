@@ -1,5 +1,6 @@
 import { Bitmap } from '@/lib/bitmap/types';
-import { CityBitmapIndex, CityQueryNode, AIStructuredCityQuery } from './cityTypes';
+import { CityBitmapIndex, CityQueryNode, AIStructuredCityQuery, CityField, CityQueryOperator } from './cityTypes';
+export type { CityQueryNode };
 import { 
   CityPackedBitmap, 
   createEmptyPackedBitmap, 
@@ -232,4 +233,177 @@ export function parseAICityQuery(aiQuery: any, validFields: Set<string>): CityQu
   }
 
   throw new Error("Could not parse query node");
+}
+
+// ============================================================================
+// Performance Lab & Scaling Experiment Shared Query Builder
+// ============================================================================
+
+export interface CityIssueFilterState {
+  traffic: boolean;      // Severe Traffic -> trafficLevel = 'Severe'
+  accident: boolean;     // Accidents -> incidentType = 'Accident'
+  pollution: boolean;    // High Pollution -> airQuality = 'Hazardous'
+  power: boolean;        // Power Failure -> powerStatus = 'Failure'
+  hospital: boolean;     // Hospital Overload -> hospitalLoad = 'Critical'
+  risk: boolean;         // Critical Risk -> riskLevel = 'Critical'
+}
+
+export type CityScanScope = 'district' | 'city';
+
+export const DEFAULT_CITY_ISSUE_FILTERS: CityIssueFilterState = {
+  traffic: true,
+  accident: true,
+  pollution: true,
+  power: true,
+  hospital: true,
+  risk: true
+};
+
+export interface CityIssueDefinition {
+  key: keyof CityIssueFilterState;
+  label: string;
+  column: CityField;
+  operator: CityQueryOperator;
+  value: string;
+}
+
+export const CITY_ISSUE_DEFINITIONS: Record<keyof CityIssueFilterState, CityIssueDefinition> = {
+  traffic: { key: 'traffic', label: 'Severe Traffic', column: 'trafficLevel', operator: '=', value: 'Severe' },
+  accident: { key: 'accident', label: 'Accidents', column: 'incidentType', operator: '=', value: 'Accident' },
+  pollution: { key: 'pollution', label: 'High Pollution', column: 'airQuality', operator: '=', value: 'Hazardous' },
+  power: { key: 'power', label: 'Power Failure', column: 'powerStatus', operator: '=', value: 'Failure' },
+  hospital: { key: 'hospital', label: 'Hospital Overload', column: 'hospitalLoad', operator: '=', value: 'Critical' },
+  risk: { key: 'risk', label: 'Critical Risk', column: 'riskLevel', operator: '=', value: 'Critical' }
+};
+
+export interface CityQueryBuilderInput {
+  district: string | null;
+  issues: CityIssueFilterState;
+  isCityWide?: boolean;
+}
+
+export interface CityQueryBuildResult {
+  isValid: boolean;
+  ast: CityQueryNode | null;
+  error?: string;
+  summary: string;
+  selectedIssuesCount: number;
+  selectedIssueLabels: string[];
+  district: string | null;
+  isCityWide: boolean;
+}
+
+/**
+ * Builds the canonical CityQueryNode AST from the Performance Lab selections.
+ * Enforces strict validation:
+ * - Rejects empty issue selections (no silent fallback).
+ * - Rejects missing district when in district scope.
+ * - Combines issue predicates with logical OR.
+ * - Combines district predicate and issue expression with logical AND.
+ * - Omits district predicate in city-wide mode.
+ */
+export function tryBuildCityQueryAST(input: CityQueryBuilderInput): CityQueryBuildResult {
+  const { district, issues, isCityWide = false } = input;
+
+  const enabledKeys = (Object.keys(CITY_ISSUE_DEFINITIONS) as (keyof CityIssueFilterState)[])
+    .filter(k => Boolean(issues[k]));
+
+  const selectedIssueLabels = enabledKeys.map(k => CITY_ISSUE_DEFINITIONS[k].label);
+  const selectedIssuesCount = enabledKeys.length;
+
+  // Validation 1: At least one issue type must be enabled
+  if (selectedIssuesCount === 0) {
+    return {
+      isValid: false,
+      ast: null,
+      error: 'No issue types selected. Select at least one issue type to scan or benchmark.',
+      summary: 'No issues selected',
+      selectedIssuesCount: 0,
+      selectedIssueLabels: [],
+      district,
+      isCityWide
+    };
+  }
+
+  // Validation 2: District is required unless in city-wide mode
+  const trimmedDistrict = district ? district.trim() : null;
+  if (!isCityWide && (!trimmedDistrict || trimmedDistrict === '')) {
+    return {
+      isValid: false,
+      ast: null,
+      error: 'No valid district selected. Select a district or enable City-Wide mode.',
+      summary: 'No district selected',
+      selectedIssuesCount,
+      selectedIssueLabels,
+      district: trimmedDistrict,
+      isCityWide
+    };
+  }
+
+  // Build binary issue predicate tree (OR)
+  const issuePredicates: CityQueryNode[] = enabledKeys.map(k => {
+    const def = CITY_ISSUE_DEFINITIONS[k];
+    return {
+      type: 'predicate',
+      column: def.column,
+      operator: def.operator,
+      value: def.value
+    };
+  });
+
+  let issueRoot: CityQueryNode = issuePredicates[0];
+  for (let i = 1; i < issuePredicates.length; i++) {
+    issueRoot = {
+      type: 'logical',
+      operator: 'OR',
+      left: issueRoot,
+      right: issuePredicates[i]
+    };
+  }
+
+  let finalAst: CityQueryNode;
+  let summary: string;
+
+  if (isCityWide) {
+    finalAst = issueRoot;
+    summary = `Scope: City-Wide | Issues: ${selectedIssueLabels.join(', ')} | Logic: ${
+      selectedIssueLabels.length > 1 ? `(${selectedIssueLabels.join(' OR ')})` : selectedIssueLabels[0]
+    }`;
+  } else {
+    finalAst = {
+      type: 'logical',
+      operator: 'AND',
+      left: {
+        type: 'predicate',
+        column: 'district',
+        operator: '=',
+        value: trimmedDistrict!
+      },
+      right: issueRoot
+    };
+    summary = `District: ${trimmedDistrict} | Issues: ${selectedIssueLabels.join(', ')} | Logic: district = '${trimmedDistrict}' AND (${
+      selectedIssueLabels.length > 1 ? `(${selectedIssueLabels.join(' OR ')})` : selectedIssueLabels[0]
+    })`;
+  }
+
+  return {
+    isValid: true,
+    ast: finalAst,
+    summary,
+    selectedIssuesCount,
+    selectedIssueLabels,
+    district: trimmedDistrict,
+    isCityWide
+  };
+}
+
+/**
+ * Builds the canonical CityQueryNode AST or throws an error if invalid.
+ */
+export function buildCityQueryAST(input: CityQueryBuilderInput): CityQueryNode {
+  const res = tryBuildCityQueryAST(input);
+  if (!res.isValid || !res.ast) {
+    throw new Error(res.error || 'Invalid city query configuration');
+  }
+  return res.ast;
 }
