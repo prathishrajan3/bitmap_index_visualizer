@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function CityPage() {
   return (
-    <div className="min-h-screen bg-[#050505] text-neutral-200 overflow-hidden">
+    <div className="h-screen h-[100dvh] bg-[#050505] text-neutral-200 overflow-hidden">
       <CityDigitalTwin />
     </div>
   );

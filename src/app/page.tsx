@@ -268,7 +268,7 @@ export default function LaboratoryDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans flex flex-col relative overflow-hidden">
+    <div className="h-screen h-[100dvh] max-h-screen bg-neutral-950 text-white font-sans flex flex-col relative overflow-hidden">
       
       {/* Compare Modal Removed - now a Tab */}
 
@@ -293,13 +293,13 @@ export default function LaboratoryDashboard() {
       </header>
 
       {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         
         {/* Left Sidebar: Controls */}
-        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/30 flex flex-col shrink-0 min-h-0">
-          <div className="flex-1 min-h-0 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+        <aside className="w-72 xl:w-80 border-r border-neutral-800 bg-neutral-900/30 flex flex-col shrink-0 min-h-0 h-full">
+          <div className="flex-1 min-h-0 p-4 sm:p-5 flex flex-col gap-4 sm:gap-5 overflow-y-auto custom-scrollbar">
             <div>
-              <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <h2 className="text-xs sm:text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Settings2 className="w-4 h-4" /> Global Settings
               </h2>
               
@@ -392,13 +392,13 @@ export default function LaboratoryDashboard() {
             </div>
           </div>
           
-          <div className="p-6 pt-4 border-t border-neutral-800 flex flex-col gap-2 shrink-0 bg-neutral-900/30">
+          <div className="p-4 pt-3 border-t border-neutral-800 flex flex-col gap-2 shrink-0 bg-neutral-900/40">
             <input 
               type="text"
               placeholder="Optional: custom context for AI..."
               value={aiDatasetPrompt}
               onChange={e => setAiDatasetPrompt(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-xs outline-none focus:border-emerald-500 transition-colors"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500 transition-colors"
             />
             <button 
               onClick={handleAiGenerateDataset}
@@ -424,7 +424,7 @@ export default function LaboratoryDashboard() {
         </aside>
 
         {/* Center: Tabs & Content */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-neutral-950">
+        <main className="flex-1 flex flex-col overflow-hidden min-h-0 bg-neutral-950">
           
           {/* Tab Bar */}
           <div className="flex bg-[#0a0a0c] border-b border-neutral-800 px-4 pt-2 gap-1 overflow-x-auto shrink-0 flex-nowrap custom-scrollbar scroll-smooth">
@@ -441,7 +441,7 @@ export default function LaboratoryDashboard() {
             <TabBtn icon={<User className="w-4 h-4 shrink-0"/>} label="Developed By" active={activeTab==='Developed By'} onClick={() => setActiveTab('Developed By')} />
           </div>
 
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar min-h-0">
             
             {activeTab === 'Intro' && (
               <div className="h-full">
@@ -755,12 +755,12 @@ export default function LaboratoryDashboard() {
         </main>
 
         {/* Right Sidebar: AI Tutor */}
-        <aside className="w-80 border-l border-neutral-800 bg-neutral-900/30 p-6 flex flex-col shrink-0 min-h-0">
-          <h2 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+        <aside className="w-72 xl:w-80 border-l border-neutral-800 bg-neutral-900/30 p-4 sm:p-5 flex flex-col shrink-0 min-h-0 h-full">
+          <h2 className="text-xs sm:text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2 shrink-0">
             <Sparkles className="w-4 h-4 text-amber-400" /> AI Tutor
           </h2>
           
-          <div className="flex-1 min-h-0 bg-neutral-950 border border-neutral-800 rounded-lg p-4 text-sm leading-relaxed text-neutral-300 relative overflow-y-auto whitespace-pre-wrap custom-scrollbar">
+          <div className="flex-1 min-h-0 bg-neutral-950 border border-neutral-800 rounded-lg p-3.5 text-sm leading-relaxed text-neutral-300 relative overflow-y-auto whitespace-pre-wrap custom-scrollbar">
             {aiLoading ? (
               <div className="flex items-center gap-2 text-amber-500/70">
                 <span className="animate-pulse">Analyzing context...</span>
@@ -770,12 +770,12 @@ export default function LaboratoryDashboard() {
             )}
           </div>
 
-          <div className="mt-4 shrink-0 flex flex-col gap-2">
+          <div className="mt-3 shrink-0 flex flex-col gap-2">
             <textarea
               value={tutorPrompt}
               onChange={e => setTutorPrompt(e.target.value)}
               placeholder="Ask a specific question... (e.g. Teach me about cardinality)"
-              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-sm outline-none focus:border-amber-500/50 resize-none h-16"
+              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-xs sm:text-sm outline-none focus:border-amber-500/50 resize-none h-14 sm:h-16"
             />
             <button 
               onClick={askAi}
