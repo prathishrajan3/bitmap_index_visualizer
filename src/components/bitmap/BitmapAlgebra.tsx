@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Bitmap, bitmapAnd, bitmapOr, bitmapXor, createBitmapResult } from '@/lib/bitmap';
 import { BitmapMatrix } from './BitmapMatrix';
 import { Play, Calculator } from 'lucide-react';
+import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 
 interface BitmapAlgebraProps {
   availableBitmaps: Bitmap[];
 }
 
 export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
+  const { setAlgebraRecord } = useLaboratoryStore();
   const [leftIndex, setLeftIndex] = useState<number>(0);
   const [rightIndex, setRightIndex] = useState<number>(1);
   const [operator, setOperator] = useState<'AND' | 'OR' | 'XOR'>('AND');
@@ -25,12 +27,21 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
     else if (operator === 'OR') resultBits = bitmapOr(left.bits, right.bits);
     else resultBits = bitmapXor(left.bits, right.bits);
     
+    const count = resultBits.filter(b => b === 1).length;
+    setAlgebraRecord({
+      operandA: `${left.sourceColumn} = '${left.sourceValue}'`,
+      operator,
+      operandB: `${right.sourceColumn} = '${right.sourceValue}'`,
+      resultBits,
+      matchCount: count
+    });
+
     setResult(createBitmapResult(
       resultBits,
       `Derived (${left.sourceColumn} ${operator} ${right.sourceColumn})`,
       `${left.sourceValue} ${operator} ${right.sourceValue}`
     ));
-  }, [availableBitmaps, leftIndex, rightIndex, operator]);
+  }, [availableBitmaps, leftIndex, rightIndex, operator, setAlgebraRecord]);
 
   React.useEffect(() => {
     handleCalculate();

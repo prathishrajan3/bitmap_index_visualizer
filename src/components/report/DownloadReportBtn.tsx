@@ -27,6 +27,16 @@ export function DownloadReportBtn({ type }: DownloadReportBtnProps) {
         const columns = labStore.schema.columns.map(c => `${c.name} (${c.type}, Card: ${c.cardinality}, Dist: ${c.distribution})`).join('; ');
         const numBitmaps = Object.keys(labStore.bitmapIndex).reduce((acc, col) => acc + Object.keys(labStore.bitmapIndex[col]).length, 0);
 
+        const structuredBitmaps = Object.entries(labStore.bitmapIndex).map(([colName, valMap]) => ({
+          columnName: colName,
+          values: Object.entries(valMap).map(([valName, bmp]) => ({
+            valueName: valName,
+            bits: bmp.bits,
+            count: bmp.setBitCount,
+            densityPct: Math.round(bmp.density * 100)
+          }))
+        }));
+
         reportData = {
           title: 'Bitmap Index Laboratory Report',
           inputs: [
@@ -48,9 +58,41 @@ export function DownloadReportBtn({ type }: DownloadReportBtnProps) {
           ],
           finalOutput: [
             'Bitmap Indexes are fully constructed and ready for Algebra and Query Execution.',
-            'Sample Row 1: ' + JSON.stringify(labStore.dataset[0] || 'No data'),
-            'Sample Row 2: ' + JSON.stringify(labStore.dataset[1] || 'No data'),
-          ]
+            labStore.queryRecord ? `Executed Query: ${labStore.queryRecord.sql}` : 'No SQL query executed yet.',
+            labStore.quizRecord ? `Quiz Result: ${labStore.quizRecord.score} / ${labStore.quizRecord.total} (${labStore.quizRecord.percentage}%)` : 'Quiz not attempted yet.'
+          ],
+          dataset: {
+            columns: labStore.schema.columns.map(c => ({
+              name: c.name,
+              type: c.type,
+              cardinality: c.cardinality,
+              distribution: c.distribution
+            })),
+            rows: labStore.dataset
+          },
+          bitmapIndex: {
+            columns: structuredBitmaps
+          },
+          algebra: labStore.algebraRecord ? {
+            operandA: labStore.algebraRecord.operandA,
+            operator: labStore.algebraRecord.operator,
+            operandB: labStore.algebraRecord.operandB,
+            resultBits: labStore.algebraRecord.resultBits,
+            matchCount: labStore.algebraRecord.matchCount,
+            totalRows: labStore.dataset.length
+          } : undefined,
+          query: labStore.queryRecord ? {
+            sql: labStore.queryRecord.sql,
+            executionMsg: labStore.queryRecord.executionMsg,
+            results: labStore.queryRecord.results
+          } : undefined,
+          quiz: labStore.quizRecord ? {
+            score: labStore.quizRecord.score,
+            total: labStore.quizRecord.total,
+            percentage: labStore.quizRecord.percentage,
+            difficulty: labStore.quizRecord.difficulty,
+            completedAt: labStore.quizRecord.completedAt
+          } : undefined
         };
       } else {
         const queryStr = cityStore.activeQuery ? JSON.stringify(cityStore.activeQuery) : 'None';

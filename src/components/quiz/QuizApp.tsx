@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { PYQ_BANK, Question } from '@/lib/quiz/pyqBank';
 import { Brain, Trophy, AlertCircle, ArrowRight, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 
 type QuizState = 'setup' | 'loading' | 'playing' | 'results';
 type SourceType = 'ai' | 'pyq';
 
 export function QuizApp() {
+  const { setQuizRecord } = useLaboratoryStore();
   const [state, setState] = useState<QuizState>('setup');
   const [source, setSource] = useState<SourceType>('pyq');
   const [numQuestions, setNumQuestions] = useState(5);
@@ -68,9 +70,19 @@ export function QuizApp() {
     setSelectedOption(index);
     setShowExplanation(true);
     
-    if (index === questions[currentIndex].correctAnswerIndex) {
-      setScore(s => s + 1);
+    const isCorrect = index === questions[currentIndex].correctAnswerIndex;
+    const newScore = isCorrect ? score + 1 : score;
+    if (isCorrect) {
+      setScore(newScore);
     }
+
+    setQuizRecord({
+      score: newScore,
+      total: questions.length,
+      percentage: Math.round((newScore / Math.max(1, questions.length)) * 100),
+      difficulty,
+      completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
   };
 
   const nextQuestion = () => {
@@ -79,6 +91,13 @@ export function QuizApp() {
       setSelectedOption(null);
       setShowExplanation(false);
     } else {
+      setQuizRecord({
+        score,
+        total: questions.length,
+        percentage: Math.round((score / Math.max(1, questions.length)) * 100),
+        difficulty,
+        completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
       setState('results');
     }
   };

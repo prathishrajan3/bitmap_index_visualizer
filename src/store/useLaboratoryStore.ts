@@ -18,6 +18,28 @@ const DEFAULT_SCHEMA: DatasetSchema = {
   ]
 };
 
+export interface QueryRecord {
+  sql: string;
+  executionMsg?: string;
+  results?: any[];
+}
+
+export interface AlgebraRecord {
+  operandA: string;
+  operator: 'AND' | 'OR' | 'XOR';
+  operandB: string;
+  resultBits: number[];
+  matchCount: number;
+}
+
+export interface QuizRecord {
+  score: number;
+  total: number;
+  percentage: number;
+  difficulty: string;
+  completedAt: string;
+}
+
 interface LaboratoryState {
   // Configuration
   rowCount: number;
@@ -28,6 +50,11 @@ interface LaboratoryState {
   dataset: DatasetRow[];
   bitmapIndex: DatasetBitmapIndex;
   
+  // Activity History for Reports
+  queryRecord: QueryRecord | null;
+  algebraRecord: AlgebraRecord | null;
+  quizRecord: QuizRecord | null;
+  
   // Actions
   setRowCount: (count: number) => void;
   setSeed: (seed: number) => void;
@@ -37,6 +64,9 @@ interface LaboratoryState {
   generateData: () => void;
   loadExternalDataset: (dataset: DatasetRow[], columns?: ColumnDefinition[], domain?: string) => void;
   buildIndexes: (columns: string[]) => void;
+  setQueryRecord: (record: QueryRecord | null) => void;
+  setAlgebraRecord: (record: AlgebraRecord | null) => void;
+  setQuizRecord: (record: QuizRecord | null) => void;
 }
 
 export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
@@ -45,6 +75,14 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => ({
   schema: DEFAULT_SCHEMA,
   dataset: [],
   bitmapIndex: {},
+  
+  queryRecord: null,
+  algebraRecord: null,
+  quizRecord: null,
+
+  setQueryRecord: (record) => set({ queryRecord: record }),
+  setAlgebraRecord: (record) => set({ algebraRecord: record }),
+  setQuizRecord: (record) => set({ quizRecord: record }),
 
   setRowCount: (count) => set({ rowCount: count }),
   setSeed: (seed) => set({ seed }),

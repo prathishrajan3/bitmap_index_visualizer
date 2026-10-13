@@ -22,7 +22,22 @@ type Tab = 'Intro' | 'Dataset' | 'Builder' | 'Matrix' | 'Algebra' | 'Query' | 'Q
 
 
 export default function LaboratoryDashboard() {
-  const { dataset, schema, bitmapIndex, loadExternalDataset, generateData, updateColumnDef, addColumnDef, removeColumnDef, setRowCount, setSeed, seed, rowCount, buildIndexes } = useLaboratoryStore();
+  const { 
+    dataset, 
+    schema, 
+    bitmapIndex, 
+    loadExternalDataset, 
+    generateData, 
+    updateColumnDef, 
+    addColumnDef, 
+    removeColumnDef, 
+    setRowCount, 
+    setSeed, 
+    seed, 
+    rowCount, 
+    buildIndexes,
+    setQueryRecord 
+  } = useLaboratoryStore();
   
   const { currentModuleId, completeModule, modules } = useLearningStore();
   
@@ -235,11 +250,22 @@ export default function LaboratoryDashboard() {
       const data = await res.json();
       if (data.error) {
         setQueryResultMsg(`Error: ${data.error}`);
+        setQueryRecord({
+          sql: sqlQuery,
+          executionMsg: `Error: ${data.error}`,
+          results: []
+        });
       } else {
-        setQueryResultMsg(`Execution Time: ${data.executionTimeMs}ms. Returned ${data.results?.length} rows.`);
+        const msg = `Execution Time: ${data.executionTimeMs}ms. Returned ${data.results?.length} rows.`;
+        setQueryResultMsg(msg);
         if (Array.isArray(data.results)) {
           setQueryDbResults(data.results);
         }
+        setQueryRecord({
+          sql: sqlQuery,
+          executionMsg: msg,
+          results: Array.isArray(data.results) ? data.results : []
+        });
         // Try to visualize result if it's a specific value
         const match = sqlQuery.match(/([a-zA-Z0-9_]+)\s*=\s*'([^']+)'/i);
         if (match && match[1] && match[2] && activeTab === 'Query') {
