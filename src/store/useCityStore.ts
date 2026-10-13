@@ -5,8 +5,17 @@ import {
   CityScanScope, 
   DEFAULT_CITY_ISSUE_FILTERS 
 } from '@/lib/city/cityQueries';
+import { CityBenchmarkStatistics } from '@/lib/city/cityStatistics';
+import { CityScalingRunRecord, ActivityLogEvent } from '@/utils/reportTypes';
 
-interface CityState {
+interface CityActivityCounts {
+  queryExecutions: number;
+  issueScans: number;
+  scalingExperiments: number;
+  benchmarkRuns: number;
+}
+
+export interface CityState {
   // Data
   dataset: CityEntity[];
   bitmapIndex: CityBitmapIndex;
@@ -30,8 +39,15 @@ interface CityState {
   demoMode: boolean;
   educationalMode: boolean;
   
-  // Benchmark
-  lastBenchmarkResult: any | null;
+  // Single-Query Benchmark
+  lastBenchmarkResult: CityBenchmarkStatistics | null;
+
+  // Scaling Experiment Run (Shared for Downloadable Reports)
+  scalingRunRecord: CityScalingRunRecord | null;
+
+  // City Activities Log & Metrics
+  cityActivityLog: ActivityLogEvent[];
+  cityActivityCounts: CityActivityCounts;
 
   // Actions
   setDataset: (data: CityEntity[], index: CityBitmapIndex) => void;
@@ -49,7 +65,9 @@ interface CityState {
   setHeatmapMode: (mode: 'None' | 'Traffic' | 'Pollution' | 'Emergency' | 'Risk') => void;
   setDemoMode: (active: boolean) => void;
   setEducationalMode: (active: boolean) => void;
-  setLastBenchmarkResult: (result: any | null) => void;
+  setLastBenchmarkResult: (result: CityBenchmarkStatistics | null) => void;
+  setScalingRunRecord: (record: CityScalingRunRecord | null) => void;
+  logCityActivity: (type: string, description: string, status?: 'success' | 'failure' | 'info', details?: string) => void;
 }
 
 export const useCityStore = create<CityState>((set) => ({
@@ -74,6 +92,15 @@ export const useCityStore = create<CityState>((set) => ({
   educationalMode: false,
   
   lastBenchmarkResult: null,
+  scalingRunRecord: null,
+
+  cityActivityLog: [],
+  cityActivityCounts: {
+    queryExecutions: 0,
+    issueScans: 0,
+    scalingExperiments: 0,
+    benchmarkRuns: 0
+  },
   
   setDataset: (data, index) => set({ dataset: data, bitmapIndex: index }),
   setSimulationRunning: (running) => set({ simulationRunning: running }),
@@ -88,9 +115,65 @@ export const useCityStore = create<CityState>((set) => ({
   })),
   setScanScope: (scope) => set({ scanScope: scope }),
   setIsScalingBenchmarkRunning: (running) => set({ isScalingBenchmarkRunning: running }),
-  setActiveQuery: (query, resultIds) => set({ activeQuery: query, queryResultEntityIds: resultIds }),
+  setActiveQuery: (query, resultIds) => set((state) => {
+    const isNewQuery = Boolean(query);
+    const event: ActivityLogEvent | null = isNewQuery ? {
+      id: `city-act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      type: 'query_exec',
+      description: `Query executed: ${resultIds.size} entities matched in ${state.scanScope === 'city' ? 'City-Wide Scope' : state.selectedDistrict}`,
+      status: 'success'
+    } : null;
+
+    return {
+      activeQuery: query,
+      queryResultEntityIds: resultIds,
+      cityActivityLog: event ? [event, ...state.cityActivityLog].slice(0, 200) : state.cityActivityLog,
+      cityActivityCounts: {
+        ...state.cityActivityCounts,
+        queryExecutions: state.cityActivityCounts.queryExecutions + (isNewQuery ? 1 : 0)
+      }
+    };
+  }),
   setHeatmapMode: (mode) => set({ heatmapMode: mode }),
   setDemoMode: (active) => set({ demoMode: active }),
   setEducationalMode: (active) => set({ educationalMode: active }),
-  setLastBenchmarkResult: (result) => set({ lastBenchmarkResult: result })
+  setLastBenchmarkResult: (result) => set((state) => {
+    const event: ActivityLogEvent | null = result ? {
+      id: `city-act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      type: 'benchmark_eval',
+      description: `Benchmark evaluated: Winner ${result.winner.toUpperCase()} (${result.speedup ? result.speedup.toFixed(1) + 'x speedup' : 'inconclusive'})`,
+      status: result.resultSetsEqual ? 'success' : 'failure'
+    } : null;
+
+    return {
+      lastBenchmarkResult: result,
+      cityActivityLog: event ? [event, ...state.cityActivityLog].slice(0, 200) : state.cityActivityLog,
+      cityActivityCounts: {
+        ...state.cityActivityCounts,
+        benchmarkRuns: state.cityActivityCounts.benchmarkRuns + (result ? 1 : 0)
+      }
+    };
+  }),
+  setScalingRunRecord: (record) => set((state) => ({
+    scalingRunRecord: record,
+    cityActivityCounts: {
+      ...state.cityActivityCounts,
+      scalingExperiments: state.cityActivityCounts.scalingExperiments + (record && record.status === 'completed' ? 1 : 0)
+    }
+  })),
+  logCityActivity: (type, description, status = 'info', details) => set((state) => {
+    const event: ActivityLogEvent = {
+      id: `city-act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+      type,
+      description,
+      status,
+      details
+    };
+    return {
+      cityActivityLog: [event, ...state.cityActivityLog].slice(0, 200)
+    };
+  })
 }));

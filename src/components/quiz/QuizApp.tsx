@@ -75,14 +75,6 @@ export function QuizApp() {
     if (isCorrect) {
       setScore(newScore);
     }
-
-    setQuizRecord({
-      score: newScore,
-      total: questions.length,
-      percentage: Math.round((newScore / Math.max(1, questions.length)) * 100),
-      difficulty,
-      completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
   };
 
   const nextQuestion = () => {
@@ -96,6 +88,8 @@ export function QuizApp() {
         total: questions.length,
         percentage: Math.round((score / Math.max(1, questions.length)) * 100),
         difficulty,
+        source,
+        status: 'completed',
         completedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
       setState('results');

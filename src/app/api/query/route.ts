@@ -65,9 +65,12 @@ export async function POST(req: Request) {
       return newRow;
     }) : results;
 
+    const elapsed = endTime - startTime;
+    const executionTimeMs = Number(elapsed.toFixed(3));
+
     return NextResponse.json({ 
       results: safeResults,
-      executionTimeMs: Math.round(endTime - startTime)
+      executionTimeMs: executionTimeMs > 0 ? executionTimeMs : 0.001
     });
 
   } catch (error: any) {

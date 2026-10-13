@@ -114,15 +114,12 @@ export default function LaboratoryDashboard() {
       });
       
       skipNextGenerate.current = true;
-      useLaboratoryStore.setState({ 
-        dataset: parsedData,
-        bitmapIndex: buildDatasetBitmapIndex(parsedData, headers),
-        schema: { ...schema, columns: headers.map(h => {
-          // Calculate true cardinality of the uploaded column
-          const distinctValues = new Set(parsedData.map(r => r[h]));
-          return { name: h, type: 'string', cardinality: distinctValues.size, distribution: 'Uniform' };
-        })}
+      const parsedColumns = headers.map(h => {
+        const distinctValues = new Set(parsedData.map(r => r[h]));
+        return { name: h, type: 'string' as const, cardinality: distinctValues.size, distribution: 'Uniform' as const };
       });
+      loadExternalDataset(parsedData, parsedColumns, 'CSV Import', 'csv');
+      buildIndexes(headers);
       setExplanation(`Successfully loaded ${parsedData.length} rows from CSV file!`);
     };
     reader.readAsText(file);
@@ -163,7 +160,7 @@ export default function LaboratoryDashboard() {
               };
             });
 
-        loadExternalDataset(data.dataset, columns, data.domain || aiDatasetPrompt.trim() || undefined);
+        loadExternalDataset(data.dataset, columns, data.domain || aiDatasetPrompt.trim() || undefined, 'ai');
         const colNames = columns.map((c: any) => c.name).join(', ');
         setExplanation(`AI generated dataset for "${data.domain || aiDatasetPrompt.trim() || 'Custom Theme'}" with columns: ${colNames}!`);
       }
@@ -252,8 +249,11 @@ export default function LaboratoryDashboard() {
         setQueryResultMsg(`Error: ${data.error}`);
         setQueryRecord({
           sql: sqlQuery,
+          status: 'failure',
+          error: data.error,
           executionMsg: `Error: ${data.error}`,
-          results: []
+          results: [],
+          returnedRows: 0
         });
       } else {
         const msg = `Execution Time: ${data.executionTimeMs}ms. Returned ${data.results?.length} rows.`;
@@ -263,6 +263,9 @@ export default function LaboratoryDashboard() {
         }
         setQueryRecord({
           sql: sqlQuery,
+          status: 'success',
+          executionTimeMs: data.executionTimeMs,
+          returnedRows: Array.isArray(data.results) ? data.results.length : 0,
           executionMsg: msg,
           results: Array.isArray(data.results) ? data.results : []
         });
@@ -274,8 +277,16 @@ export default function LaboratoryDashboard() {
           // setActiveTab('Matrix');
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       setQueryResultMsg("Execution failed.");
+      setQueryRecord({
+        sql: sqlQuery,
+        status: 'failure',
+        error: e?.message || "Execution failed.",
+        executionMsg: "Execution failed.",
+        results: [],
+        returnedRows: 0
+      });
     } finally {
       setQueryExecuting(false);
     }

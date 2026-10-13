@@ -70,6 +70,8 @@ function formatMemoryPayload(bytes?: number): string {
   return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+import { CityScalingRunRecord } from '@/utils/reportTypes';
+
 interface BenchmarkSnapshot {
   summary: string;
   ast: CityQueryNode;
@@ -85,7 +87,9 @@ export function CityScalingBenchmark() {
     issueFilters, 
     scanScope, 
     isScalingBenchmarkRunning, 
-    setIsScalingBenchmarkRunning 
+    setIsScalingBenchmarkRunning,
+    setScalingRunRecord,
+    logCityActivity 
   } = useCityStore();
 
   const [useExtendedSuite, setUseExtendedSuite] = useState<boolean>(true);
@@ -135,6 +139,22 @@ export function CityScalingBenchmark() {
     };
     setBenchmarkSnapshot(snapshot);
 
+    const runId = `scaling-${Date.now()}`;
+    const newScalingRecord: CityScalingRunRecord = {
+      runId,
+      timestamp: new Date().toISOString(),
+      querySummary: liveQueryConfig.summary,
+      scope: scanScope === 'city' ? 'city' : 'district',
+      district: selectedDistrict,
+      issueLabels: [...liveQueryConfig.selectedIssueLabels],
+      ast: snapshot.ast,
+      datasetSizes: activeSizes,
+      resultsBySize: {},
+      status: 'in_progress'
+    };
+    setScalingRunRecord(newScalingRecord);
+    logCityActivity('scaling_start', `Started scaling experiment on ${activeSizes.length} sizes (${snapshot.summary})`);
+
     try {
       for (const size of activeSizes) {
         setCurrentSize(size);
@@ -166,10 +186,26 @@ export function CityScalingBenchmark() {
         );
         
         setResults(prev => ({ ...prev, [size]: stats }));
+
+        newScalingRecord.resultsBySize[size] = {
+          genTimeMs,
+          buildTimeMs,
+          memoryBytes,
+          stats
+        };
+        setScalingRunRecord({ ...newScalingRecord });
       }
+
+      newScalingRecord.status = 'completed';
+      setScalingRunRecord({ ...newScalingRecord });
+      logCityActivity('scaling_complete', `Completed scaling experiment up to ${activeSizes[activeSizes.length - 1].toLocaleString()} records`);
     } catch (e: any) {
       console.error("Scaling test error:", e);
       setBenchmarkError(e?.message || "An unexpected error occurred during benchmark execution.");
+      newScalingRecord.status = 'failed';
+      newScalingRecord.error = e?.message;
+      setScalingRunRecord({ ...newScalingRecord });
+      logCityActivity('scaling_error', `Scaling benchmark failed: ${e?.message}`, 'failure');
     } finally {
       setIsScalingBenchmarkRunning(false);
       setCurrentSize(null);
@@ -180,6 +216,8 @@ export function CityScalingBenchmark() {
     setResults({});
     setBenchmarkSnapshot(null);
     setBenchmarkError(null);
+    setScalingRunRecord(null);
+    logCityActivity('scaling_clear', 'Cleared scaling benchmark results');
   };
 
   // Find maximum execution time for SVG bar chart scaling

@@ -14,6 +14,7 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
   const [rightIndex, setRightIndex] = useState<number>(1);
   const [operator, setOperator] = useState<'AND' | 'OR' | 'XOR'>('AND');
   const [result, setResult] = useState<Bitmap | null>(null);
+  const lastOpSignatureRef = React.useRef<string>('');
 
   const handleCalculate = React.useCallback(() => {
     if (availableBitmaps.length < 2) return;
@@ -28,13 +29,18 @@ export function BitmapAlgebra({ availableBitmaps }: BitmapAlgebraProps) {
     else resultBits = bitmapXor(left.bits, right.bits);
     
     const count = resultBits.filter(b => b === 1).length;
-    setAlgebraRecord({
-      operandA: `${left.sourceColumn} = '${left.sourceValue}'`,
-      operator,
-      operandB: `${right.sourceColumn} = '${right.sourceValue}'`,
-      resultBits,
-      matchCount: count
-    });
+    const opSignature = `${left.sourceColumn}:${left.sourceValue}:${operator}:${right.sourceColumn}:${right.sourceValue}`;
+
+    if (lastOpSignatureRef.current !== opSignature) {
+      lastOpSignatureRef.current = opSignature;
+      setAlgebraRecord({
+        operandA: `${left.sourceColumn} = '${left.sourceValue}'`,
+        operator,
+        operandB: `${right.sourceColumn} = '${right.sourceValue}'`,
+        resultBits,
+        matchCount: count
+      });
+    }
 
     setResult(createBitmapResult(
       resultBits,

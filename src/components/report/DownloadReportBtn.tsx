@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Download, FileText, File as FilePdf, FileType2, ChevronDown, Loader2 } from 'lucide-react';
-import { generateReport, ReportData } from '@/utils/reportGenerator';
+import { generateReport } from '@/utils/reportGenerator';
+import { buildLaboratoryReportPayload, buildCityReportPayload } from '@/utils/reportDataBuilder';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
+import { useLearningStore } from '@/store/useLearningStore';
 import { useCityStore } from '@/store/useCityStore';
 
 interface DownloadReportBtnProps {
@@ -14,6 +16,7 @@ export function DownloadReportBtn({ type }: DownloadReportBtnProps) {
 
   // Stores
   const labStore = useLaboratoryStore();
+  const learningStore = useLearningStore();
   const cityStore = useCityStore();
 
   const handleDownload = async (format: 'pdf' | 'docx' | 'txt') => {
@@ -21,110 +24,11 @@ export function DownloadReportBtn({ type }: DownloadReportBtnProps) {
     setIsGenerating(true);
     
     try {
-      let reportData: ReportData;
+      const reportPayload = type === 'lab'
+        ? buildLaboratoryReportPayload(labStore, learningStore)
+        : buildCityReportPayload(cityStore);
 
-      if (type === 'lab') {
-        const columns = labStore.schema.columns.map(c => `${c.name} (${c.type}, Card: ${c.cardinality}, Dist: ${c.distribution})`).join('; ');
-        const numBitmaps = Object.keys(labStore.bitmapIndex).reduce((acc, col) => acc + Object.keys(labStore.bitmapIndex[col]).length, 0);
-
-        const structuredBitmaps = Object.entries(labStore.bitmapIndex).map(([colName, valMap]) => ({
-          columnName: colName,
-          values: Object.entries(valMap).map(([valName, bmp]) => ({
-            valueName: valName,
-            bits: bmp.bits,
-            count: bmp.setBitCount,
-            densityPct: Math.round(bmp.density * 100)
-          }))
-        }));
-
-        reportData = {
-          title: 'Bitmap Index Laboratory Report',
-          inputs: [
-            { label: 'Dataset Domain', value: labStore.schema.domain },
-            { label: 'Row Count', value: labStore.rowCount.toString() },
-            { label: 'Random Seed', value: labStore.seed.toString() },
-            { label: 'Schema Columns', value: columns }
-          ],
-          processingSteps: [
-            'Generated synthetic tabular data based on schema definitions.',
-            'Iterated over all rows to extract unique column values.',
-            'Constructed a dense bit-array (bitmap) for every unique categorical value.',
-            'Prepared inverted index mapping for rapid Boolean querying.'
-          ],
-          intermediateResults: [
-            `Total Columns Indexed: ${Object.keys(labStore.bitmapIndex).length}`,
-            `Total Bitmap Vectors Built: ${numBitmaps}`,
-            `Raw Dataset Size: ${labStore.dataset.length} rows`
-          ],
-          finalOutput: [
-            'Bitmap Indexes are fully constructed and ready for Algebra and Query Execution.',
-            labStore.queryRecord ? `Executed Query: ${labStore.queryRecord.sql}` : 'No SQL query executed yet.',
-            labStore.quizRecord ? `Quiz Result: ${labStore.quizRecord.score} / ${labStore.quizRecord.total} (${labStore.quizRecord.percentage}%)` : 'Quiz not attempted yet.'
-          ],
-          dataset: {
-            columns: labStore.schema.columns.map(c => ({
-              name: c.name,
-              type: c.type,
-              cardinality: c.cardinality,
-              distribution: c.distribution
-            })),
-            rows: labStore.dataset
-          },
-          bitmapIndex: {
-            columns: structuredBitmaps
-          },
-          algebra: labStore.algebraRecord ? {
-            operandA: labStore.algebraRecord.operandA,
-            operator: labStore.algebraRecord.operator,
-            operandB: labStore.algebraRecord.operandB,
-            resultBits: labStore.algebraRecord.resultBits,
-            matchCount: labStore.algebraRecord.matchCount,
-            totalRows: labStore.dataset.length
-          } : undefined,
-          query: labStore.queryRecord ? {
-            sql: labStore.queryRecord.sql,
-            executionMsg: labStore.queryRecord.executionMsg,
-            results: labStore.queryRecord.results
-          } : undefined,
-          quiz: labStore.quizRecord ? {
-            score: labStore.quizRecord.score,
-            total: labStore.quizRecord.total,
-            percentage: labStore.quizRecord.percentage,
-            difficulty: labStore.quizRecord.difficulty,
-            completedAt: labStore.quizRecord.completedAt
-          } : undefined
-        };
-      } else {
-        const queryStr = cityStore.activeQuery ? JSON.stringify(cityStore.activeQuery) : 'None';
-        const numBitmaps = Object.keys(cityStore.bitmapIndex).reduce((acc, col) => acc + Object.keys(cityStore.bitmapIndex[col]).length, 0);
-
-        reportData = {
-          title: 'Nova Smart City Execution Report',
-          inputs: [
-            { label: 'Simulation Scenario', value: cityStore.activeScenario },
-            { label: 'Time of Day', value: cityStore.timeOfDay },
-            { label: 'Weather Conditions', value: cityStore.weather },
-            { label: 'Total Entities', value: cityStore.dataset.length.toString() },
-            { label: 'Active Query AST', value: queryStr }
-          ],
-          processingSteps: [
-            'Simulated live city state (traffic, emergencies, pollution).',
-            'Updated underlying bitmap index dynamically.',
-            'Parsed natural language query into AST.',
-            'Executed boolean bitwise operations (AND/OR/NOT) against city entities.'
-          ],
-          intermediateResults: [
-            `Bitmap Vectors Built for City: ${numBitmaps}`,
-            `Query processing overhead: ~0.20ms per query`
-          ],
-          finalOutput: [
-            `Query Execution Result: ${cityStore.queryResultEntityIds.size} matching entities found.`,
-            `Heatmap Render Mode: ${cityStore.heatmapMode}`
-          ]
-        };
-      }
-
-      await generateReport(format, reportData);
+      await generateReport(format, reportPayload);
     } catch (error) {
       console.error("Failed to generate report", error);
       alert("Failed to generate report. Check console for details.");
@@ -138,33 +42,36 @@ export function DownloadReportBtn({ type }: DownloadReportBtnProps) {
       <button 
         onClick={() => setIsOpen(!isOpen)}
         disabled={isGenerating}
-        className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors border border-neutral-700"
+        className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors border border-neutral-700 disabled:opacity-50"
       >
         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        Download Report
+        <span>Download Report</span>
         <ChevronDown className="w-4 h-4 opacity-50" />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-48 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl overflow-hidden z-50">
+        <div className="absolute top-full right-0 mt-2 w-52 bg-neutral-900 border border-neutral-800 rounded-lg shadow-2xl overflow-hidden z-50">
           <div className="p-1">
             <button 
               onClick={() => handleDownload('pdf')}
-              className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2 transition-colors font-medium"
             >
-              <FilePdf className="w-4 h-4 text-red-400" /> PDF Format
+              <FilePdf className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>PDF Technical Report</span>
             </button>
             <button 
               onClick={() => handleDownload('docx')}
-              className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2 transition-colors font-medium"
             >
-              <FileType2 className="w-4 h-4 text-blue-400" /> Word Document
+              <FileType2 className="w-4 h-4 text-blue-400 shrink-0" />
+              <span>Word Document (.docx)</span>
             </button>
             <button 
               onClick={() => handleDownload('txt')}
-              className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2"
+              className="w-full text-left px-3 py-2 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white rounded flex items-center gap-2 transition-colors font-medium"
             >
-              <FileText className="w-4 h-4 text-neutral-400" /> Plain Text
+              <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Plain Text Summary (.txt)</span>
             </button>
           </div>
         </div>
