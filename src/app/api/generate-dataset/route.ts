@@ -44,8 +44,154 @@ const KNOWN_CATEGORICAL_GENERATORS: Record<string, string[]> = {
   shift: ['Morning', 'Evening', 'Night'],
   division: ['Engineering', 'Marketing', 'Operations', 'Finance'],
   traffic: ['Light', 'Moderate', 'Heavy', 'Severe'],
-  weather: ['Sunny', 'Cloudy', 'Rainy', 'Stormy']
+  weather: ['Sunny', 'Cloudy', 'Rainy', 'Stormy'],
+  degree: ['B.Tech', 'B.Sc', 'M.Tech', 'MBA'],
+  major: ['CS', 'DataScience', 'AI', 'Cybersecurity'],
+  semester: ['Fall', 'Spring', 'Summer'],
+  club: ['Robotics', 'Coding', 'Debate', 'Sports'],
+  scholarship: ['Full', 'Partial', 'None'],
+  attendance: ['High', 'Moderate', 'Low'],
+  roomtype: ['ICU', 'General', 'Private', 'Semi-Private'],
+  gate: ['Gate A1', 'Gate B3', 'Gate C5', 'Gate D2'],
+  deliveryspeed: ['Standard', 'Express', 'SameDay'],
+  region: ['North', 'South', 'East', 'West'],
+  device: ['Mobile', 'Desktop', 'Tablet'],
+  branch: ['Downtown', 'Uptown', 'WestEnd', 'Suburban']
 };
+
+export interface DomainProfile {
+  domain: string;
+  keywords: string[];
+  candidateColumns: Array<{ name: string; options: string[]; cardinality: number; distribution: string }>;
+}
+
+export const DOMAIN_PROFILES: DomainProfile[] = [
+  {
+    domain: 'University Campus',
+    keywords: ['department', 'year', 'hostel', 'student', 'faculty', 'campus', 'grade', 'university', 'college', 'degree', 'semester'],
+    candidateColumns: [
+      { name: 'Campus', options: ['North Campus', 'South Campus', 'Downtown', 'Tech Park'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Degree', options: ['B.Tech', 'B.Sc', 'M.Tech', 'MBA'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Scholarship', options: ['Full', 'Partial', 'None'], cardinality: 3, distribution: 'Random' },
+      { name: 'Semester', options: ['Fall', 'Spring', 'Summer'], cardinality: 3, distribution: 'Cyclic' },
+      { name: 'Club', options: ['Robotics', 'Coding', 'Debate', 'Sports'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Attendance', options: ['High', 'Moderate', 'Low'], cardinality: 3, distribution: 'Skewed' },
+      { name: 'Grade', options: ['Grade A', 'Grade B', 'Grade C', 'Grade D'], cardinality: 4, distribution: 'Uniform' }
+    ]
+  },
+  {
+    domain: 'Hospital Patient Records',
+    keywords: ['ward', 'severity', 'bloodgroup', 'insurance', 'patient', 'doctor', 'hospital', 'clinic', 'medical'],
+    candidateColumns: [
+      { name: 'RoomType', options: ['ICU', 'General', 'Private', 'Semi-Private'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Gender', options: ['Male', 'Female', 'Non-Binary'], cardinality: 3, distribution: 'Uniform' },
+      { name: 'Risk', options: ['Low', 'Medium', 'High', 'Critical'], cardinality: 4, distribution: 'Skewed' },
+      { name: 'Vaccinated', options: ['Yes', 'No'], cardinality: 2, distribution: 'Random' },
+      { name: 'DischargeStatus', options: ['Admitted', 'Observation', 'Discharged'], cardinality: 3, distribution: 'Cyclic' }
+    ]
+  },
+  {
+    domain: 'Airport Flight Operations',
+    keywords: ['airline', 'cabinclass', 'flightstatus', 'terminal', 'flight', 'airport', 'plane'],
+    candidateColumns: [
+      { name: 'Gate', options: ['Gate A1', 'Gate B3', 'Gate C5', 'Gate D2'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'LuggageCheck', options: ['Carry-On', 'Checked', 'Priority'], cardinality: 3, distribution: 'Random' },
+      { name: 'MealPreference', options: ['Standard', 'Vegetarian', 'Vegan', 'Halal'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'BookingClass', options: ['Economy', 'Business', 'First'], cardinality: 3, distribution: 'Skewed' }
+    ]
+  },
+  {
+    domain: 'E-Commerce Orders',
+    keywords: ['category', 'paymentmethod', 'membership', 'status', 'ecommerce', 'order', 'shop', 'retail'],
+    candidateColumns: [
+      { name: 'DeliverySpeed', options: ['Standard', 'Express', 'SameDay'], cardinality: 3, distribution: 'Uniform' },
+      { name: 'Region', options: ['North', 'South', 'East', 'West'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Device', options: ['Mobile', 'Desktop', 'Tablet'], cardinality: 3, distribution: 'Random' },
+      { name: 'DiscountTier', options: ['Gold', 'Silver', 'Bronze', 'None'], cardinality: 4, distribution: 'Skewed' }
+    ]
+  },
+  {
+    domain: 'Banking & Credit Analytics',
+    keywords: ['accounttype', 'creditrating', 'loanapproved', 'risklevel', 'bank', 'finance', 'credit', 'loan'],
+    candidateColumns: [
+      { name: 'Branch', options: ['Downtown', 'Uptown', 'WestEnd', 'Suburban'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Occupation', options: ['Salaried', 'Self-Employed', 'Business', 'Retired'], cardinality: 4, distribution: 'Uniform' },
+      { name: 'Collateral', options: ['Property', 'Securities', 'None'], cardinality: 3, distribution: 'Random' },
+      { name: 'KYCStatus', options: ['Verified', 'Pending', 'ActionRequired'], cardinality: 3, distribution: 'Cyclic' }
+    ]
+  }
+];
+
+export function isGenericColumnName(name: string): boolean {
+  if (!name || typeof name !== 'string') return true;
+  const trimmed = name.trim();
+  return /^(column|col|newcolumn|new_column|new\s+column|attribute|field|dimension|customcol|custom_column)\s*[_ -]?\d*$/i.test(trimmed);
+}
+
+export function inferDomainAndRenameColumns(schemaColumns: ColumnDef[]): { domain: string; renamedColumns: ColumnDef[] } {
+  const establishedCols = schemaColumns.filter(c => !isGenericColumnName(c.name));
+
+  let bestProfile: DomainProfile = DOMAIN_PROFILES[0];
+  let maxScore = -1;
+
+  for (const profile of DOMAIN_PROFILES) {
+    let score = 0;
+    for (const estCol of establishedCols) {
+      const colNorm = estCol.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (profile.keywords.some(kw => colNorm.includes(kw) || kw.includes(colNorm))) {
+        score++;
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      bestProfile = profile;
+    }
+  }
+
+  const existingNamesLower = new Set(establishedCols.map(c => c.name.toLowerCase()));
+  const candidateQueue = [...bestProfile.candidateColumns];
+
+  const renamedColumns: ColumnDef[] = [];
+  for (const col of schemaColumns) {
+    if (isGenericColumnName(col.name)) {
+      let chosenCandidate = candidateQueue.find(cand => !existingNamesLower.has(cand.name.toLowerCase()));
+      if (!chosenCandidate) {
+        const genericFallbacks = [
+          { name: 'Campus', options: ['North Campus', 'South Campus', 'Downtown'], cardinality: 3, distribution: 'Uniform' },
+          { name: 'Degree', options: ['B.Tech', 'B.Sc', 'M.Tech'], cardinality: 3, distribution: 'Uniform' },
+          { name: 'Region', options: ['North', 'South', 'East', 'West'], cardinality: 4, distribution: 'Uniform' },
+          { name: 'Priority', options: ['High', 'Medium', 'Low'], cardinality: 3, distribution: 'Uniform' },
+          { name: 'Status', options: ['Active', 'Pending', 'Completed'], cardinality: 3, distribution: 'Cyclic' }
+        ];
+        chosenCandidate = genericFallbacks.find(cand => !existingNamesLower.has(cand.name.toLowerCase())) || {
+          name: 'Category',
+          options: ['Type A', 'Type B', 'Type C'],
+          cardinality: 3,
+          distribution: 'Uniform'
+        };
+      }
+
+      existingNamesLower.add(chosenCandidate.name.toLowerCase());
+      KNOWN_CATEGORICAL_GENERATORS[chosenCandidate.name.toLowerCase().replace(/[^a-z0-9]/g, '')] = chosenCandidate.options;
+
+      renamedColumns.push({
+        name: chosenCandidate.name,
+        type: 'string',
+        cardinality: col.cardinality || chosenCandidate.cardinality || 3,
+        distribution: col.distribution || (chosenCandidate.distribution as any) || 'Uniform'
+      });
+    } else {
+      renamedColumns.push({
+        name: col.name,
+        type: col.type || 'string',
+        cardinality: col.cardinality || 3,
+        distribution: col.distribution || 'Uniform'
+      });
+    }
+  }
+
+  return { domain: bestProfile.domain, renamedColumns };
+}
 
 function getOptionsForColumn(colName: string, cardinality: number = 3): string[] {
   const normalized = colName.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -74,24 +220,35 @@ function generateFallbackThemedDataset(prompt: string, rowCount: number, schemaC
 
   const hasExistingSchema = schemaColumns && Array.isArray(schemaColumns) && schemaColumns.length > 0;
   const isAddColumnPrompt = /add\s+(?:a\s+)?column|include\s+(?:a\s+)?column/i.test(pLower);
+  const hasGenericCols = hasExistingSchema && schemaColumns.some(c => isGenericColumnName(c.name));
 
-  if (hasExistingSchema && !isAddColumnPrompt && (!p || pLower.includes('current') || pLower.includes('my column') || pLower.includes('schema'))) {
-    // Generate data respecting the user's existing/added schema columns directly
-    domain = 'Custom Defined Schema';
-    columns = schemaColumns.map(c => ({
-      name: c.name,
-      type: c.type || 'string',
-      cardinality: c.cardinality || 3,
-      distribution: c.distribution || 'Uniform'
-    }));
+  if (hasExistingSchema && (hasGenericCols || (!isAddColumnPrompt && (!p || pLower.includes('current') || pLower.includes('my column') || pLower.includes('schema'))))) {
+    if (hasGenericCols) {
+      const { domain: inferredDomain, renamedColumns } = inferDomainAndRenameColumns(schemaColumns);
+      domain = inferredDomain;
+      columns = renamedColumns;
+    } else {
+      domain = 'Custom Defined Schema';
+      columns = schemaColumns.map(c => ({
+        name: c.name,
+        type: c.type || 'string',
+        cardinality: c.cardinality || 3,
+        distribution: c.distribution || 'Uniform'
+      }));
+    }
     columns.forEach(col => {
       generators[col.name] = getOptionsForColumn(col.name, col.cardinality);
     });
   } else if (hasExistingSchema && isAddColumnPrompt) {
-    // User requested adding a column via prompt, e.g. "add a column for city"
+    // User requested adding a column via prompt, e.g. "add a column for city" or generic "add a column"
     domain = 'Extended Schema';
     const match = p.match(/(?:add|include)\s+(?:a\s+)?column\s+(?:for\s+)?([a-zA-Z0-9_ ]+)/i);
-    const addedColName = match && match[1] ? match[1].trim() : 'NewColumn';
+    let addedColName = match && match[1] ? match[1].trim() : '';
+    if (!addedColName || isGenericColumnName(addedColName)) {
+      const { renamedColumns } = inferDomainAndRenameColumns([...schemaColumns, { name: 'Column' }]);
+      const lastCol = renamedColumns[renamedColumns.length - 1];
+      addedColName = lastCol ? lastCol.name : 'Category';
+    }
     const cleanedAddedName = addedColName.charAt(0).toUpperCase() + addedColName.slice(1);
 
     columns = schemaColumns.map(c => ({
@@ -235,15 +392,19 @@ Important: Bitmap indexes excel at low-cardinality categorical data (e.g. 2 to 6
       ? schema.map((c: any) => c.name).filter(Boolean)
       : [];
 
+    const genericColNames = schemaColNames.filter(name => isGenericColumnName(name));
+    const establishedColNames = schemaColNames.filter(name => !isGenericColumnName(name));
+
     const p = (prompt || '').trim();
     const isAddColumnRequest = /add\s+(?:a\s+)?column|include\s+(?:a\s+)?column/i.test(p);
 
     if (p !== '') {
       if (isAddColumnRequest && schemaColNames.length > 0) {
         llmPrompt += `
-THE USER CURRENTLY HAS THESE COLUMNS IN THEIR SCHEMA: [${schemaColNames.join(', ')}].
-THE USER REQUESTED: "${p}".
-You MUST RETAIN all existing columns [${schemaColNames.join(', ')}], and ADD the new column(s) requested by the user.
+THE USER CURRENTLY HAS THESE ESTABLISHED COLUMNS: [${establishedColNames.join(', ')}].
+THE USER REQUESTED TO ADD A COLUMN: "${p}".
+You MUST RETAIN all established columns [${establishedColNames.join(', ')}], and ADD the new column(s).
+If any column has a generic placeholder name (like ${genericColNames.join(', ') || 'Column 4'}), you MUST RENAME it to a realistic, meaningful domain attribute.
 Generate realistic, low-cardinality values for all columns.
 `;
       } else {
@@ -252,7 +413,8 @@ THE USER REQUESTED THIS SPECIFIC THEME / CONTEXT: "${p}".
 `;
         if (schemaColNames.length > 0) {
           llmPrompt += `
-If existing columns [${schemaColNames.join(', ')}] fit this context, retain or adapt them. Otherwise, create 3 to 5 realistic, low-cardinality column names that directly match "${p}".
+If existing columns [${schemaColNames.join(', ')}] fit this context, retain them.
+If any column has a generic placeholder name (like ${genericColNames.join(', ') || 'Column 4'}), you MUST RENAME it to a realistic attribute matching "${p}".
 `;
         } else {
           llmPrompt += `
@@ -260,6 +422,19 @@ Create 3 to 5 realistic, low-cardinality column names that directly match "${p}"
 `;
         }
       }
+    } else if (genericColNames.length > 0) {
+      llmPrompt += `
+THE USER CURRENTLY HAS THESE ESTABLISHED COLUMNS IN THE SCHEMA: [${establishedColNames.join(', ')}].
+THE USER ALSO ADDED ${genericColNames.length} NEW COLUMN(S) WITH GENERIC PLACEHOLDER NAMES: [${genericColNames.join(', ')}].
+CRITICAL REQUIREMENT:
+1. You MUST RETAIN all established columns: [${establishedColNames.join(', ')}].
+2. For each generic placeholder column in [${genericColNames.join(', ')}], you MUST RENAME IT to a realistic, meaningful, and contextually relevant column name that naturally belongs in this exact domain alongside [${establishedColNames.join(', ')}].
+   - For example, if existing columns are [Department, Year, Hostel], a relevant 4th column MUST be named something like "Campus", "Degree", "Semester", "Scholarship", "Major", or "Club".
+   - If existing columns are [Ward, BloodGroup, Insurance], a relevant column should be "RoomType", "Severity", or "DoctorRole".
+   - If existing columns are [Airline, CabinClass, Terminal], a relevant column should be "FlightStatus", "Gate", or "MealPreference".
+3. NEVER KEEP GENERIC NAMES LIKE "${genericColNames.join('", "')}". Always rename them to professional domain attributes.
+4. Generate realistic, low-cardinality categorical values for all columns, including the renamed column(s).
+`;
     } else if (schemaColNames.length > 0) {
       llmPrompt += `
 THE USER DEFINED THE FOLLOWING COLUMNS IN THE SCHEMA: [${schemaColNames.join(', ')}].
@@ -325,6 +500,44 @@ Do not wrap in markdown quotes. Return strictly valid JSON.`;
 
     if (dataset.length === 0) {
       return NextResponse.json(generateFallbackThemedDataset(prompt || '', rows, schema));
+    }
+
+    // Fall-safe check: If any column from LLM still has a generic placeholder name, rename it
+    const anyStillGeneric = columns.some(c => isGenericColumnName(c.name)) || 
+      (dataset.length > 0 && Object.keys(dataset[0]).some(k => k !== 'id' && isGenericColumnName(k)));
+
+    if (anyStillGeneric) {
+      const colsToProcess = columns.length > 0 ? columns : Object.keys(dataset[0]).filter(k => k !== 'id').map(name => ({ name }));
+      const { domain: infDomain, renamedColumns } = inferDomainAndRenameColumns(colsToProcess);
+      domain = parsed.domain || infDomain;
+
+      const renameMap = new Map<string, string>();
+      colsToProcess.forEach((oldCol, idx) => {
+        if (renamedColumns[idx] && oldCol.name !== renamedColumns[idx].name) {
+          renameMap.set(oldCol.name, renamedColumns[idx].name);
+        }
+      });
+
+      columns = renamedColumns;
+
+      if (renameMap.size > 0) {
+        dataset = dataset.map((row: any) => {
+          const newRow: any = { ...row };
+          for (const [oldName, newName] of renameMap.entries()) {
+            if (newRow[oldName] !== undefined) {
+              const val = newRow[oldName];
+              delete newRow[oldName];
+              if (typeof val === 'string' && isGenericColumnName(val.replace(/\s+[A-Za-z0-9]+$/, ''))) {
+                const opts = getOptionsForColumn(newName);
+                newRow[newName] = opts[Math.floor(Math.random() * opts.length)];
+              } else {
+                newRow[newName] = val;
+              }
+            }
+          }
+          return newRow;
+        });
+      }
     }
 
     // Normalize rows: ensure id exists and all values are strings

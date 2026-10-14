@@ -371,21 +371,39 @@ export const useLaboratoryStore = create<LaboratoryState>((set, get) => {
 
     addColumnDef: () => set((state) => {
       const newId = `col-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const existingNamesLower = new Set(state.schema.columns.map(c => c.name.toLowerCase()));
+
+      // Intelligent domain suggestions for University or general domains
+      const domainSuggestions: Array<{ name: string; options: string[] }> = [
+        { name: 'Campus', options: ['North Campus', 'South Campus', 'Downtown'] },
+        { name: 'Degree', options: ['B.Tech', 'B.Sc', 'M.Tech'] },
+        { name: 'Scholarship', options: ['Full', 'Partial', 'None'] },
+        { name: 'Semester', options: ['Fall', 'Spring', 'Summer'] },
+        { name: 'Club', options: ['Robotics', 'Coding', 'Sports'] },
+        { name: 'RoomType', options: ['ICU', 'General', 'Private'] },
+        { name: 'Gate', options: ['Gate A1', 'Gate B2', 'Gate C3'] },
+        { name: 'Region', options: ['North', 'South', 'East'] },
+        { name: 'Delivery', options: ['Standard', 'Express', 'SameDay'] }
+      ];
+
+      const matchedSuggestion = domainSuggestions.find(s => !existingNamesLower.has(s.name.toLowerCase()));
+
+      let newName = matchedSuggestion ? matchedSuggestion.name : `Column ${state.schema.columns.length + 1}`;
       let count = state.schema.columns.length + 1;
-      let newName = `Column ${count}`;
-      while (state.schema.columns.some(c => c.name.toLowerCase() === newName.toLowerCase())) {
+      while (existingNamesLower.has(newName.toLowerCase())) {
         count++;
         newName = `Column ${count}`;
       }
+
       const newCol: ColumnDefinition = {
         id: newId,
         name: newName,
         type: 'string',
-        cardinality: 3,
+        cardinality: matchedSuggestion ? matchedSuggestion.options.length : 3,
         distribution: 'Uniform'
       };
 
-      const sampleOptions = [`${newName}_A`, `${newName}_B`, `${newName}_C`];
+      const sampleOptions = matchedSuggestion ? matchedSuggestion.options : [`${newName}_A`, `${newName}_B`, `${newName}_C`];
       const newDataset = state.dataset.length > 0
         ? state.dataset.map((row, idx) => ({
             ...row,

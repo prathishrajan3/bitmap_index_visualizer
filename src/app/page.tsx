@@ -128,7 +128,67 @@ export default function LaboratoryDashboard() {
   };
 
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [aiDatasetPrompt, setAiDatasetPrompt] = useState('');
+
+  const handleAddColumnWithAi = async () => {
+    setIsAddingColumn(true);
+    setExplanation("Adding column and asking AI to name it and generate domain-relevant data...");
+    try {
+      const count = schema.columns.length + 1;
+      const placeholderName = `Column ${count}`;
+      const updatedCols = [
+        ...schema.columns,
+        {
+          name: placeholderName,
+          type: 'string' as const,
+          cardinality: 3,
+          distribution: 'Uniform' as const
+        }
+      ];
+
+      const res = await fetch('/api/generate-dataset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowCount,
+          schema: updatedCols,
+          prompt: aiDatasetPrompt.trim() ? `${aiDatasetPrompt.trim()} - add a new column` : 'add a relevant domain column',
+          seed: Math.random()
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        addColumnDef();
+        setExplanation(`Added column (Note: ${data.error})`);
+      } else if (data.dataset && data.dataset.length > 0) {
+        skipNextGenerate.current = true;
+        const columns = data.columns && data.columns.length > 0
+          ? data.columns
+          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string) => {
+              const distinctVals = new Set(data.dataset.map((r: any) => r[name]));
+              return {
+                name,
+                type: 'string' as const,
+                cardinality: distinctVals.size,
+                distribution: 'Uniform' as const
+              };
+            });
+
+        loadExternalDataset(data.dataset, columns, data.domain || undefined, 'ai');
+        const colNames = columns.map((c: any) => c.name).join(', ');
+        setExplanation(`Added column and generated relevant AI dataset with columns: ${colNames}!`);
+      } else {
+        addColumnDef();
+      }
+    } catch (e) {
+      addColumnDef();
+      setExplanation("Added column to schema.");
+    } finally {
+      setIsAddingColumn(false);
+    }
+  };
 
   const handleAiGenerateDataset = async () => {
     setIsAiGenerating(true);
@@ -443,10 +503,11 @@ export default function LaboratoryDashboard() {
                   </div>
                 ))}
                 <button 
-                  onClick={addColumnDef}
-                  className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
+                  onClick={handleAddColumnWithAi}
+                  disabled={isAddingColumn || isAiGenerating}
+                  className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50"
                 >
-                  <Plus className="w-3 h-3" /> Add Column
+                  <Plus className="w-3 h-3" /> {isAddingColumn ? 'Naming & Generating Column...' : 'Add Column'}
                 </button>
               </div>
             </div>
