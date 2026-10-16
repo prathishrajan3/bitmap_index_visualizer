@@ -5,11 +5,15 @@ import { generateDynamicAiQuiz } from '@/lib/quiz/aiQuizGenerator';
 export async function POST(req: NextRequest) {
   let reqNumQuestions = 5;
   let reqDifficulty = 'Medium';
+  let excludeIds: string[] = [];
 
   try {
     const body = await req.json();
     reqNumQuestions = Number(body.numQuestions) || 5;
     reqDifficulty = String(body.difficulty || 'Medium');
+    if (Array.isArray(body.excludeIds)) {
+      excludeIds = body.excludeIds.map((id: any) => String(id));
+    }
 
     const apiKey = process.env.OPENAI_API_KEY;
 
@@ -19,23 +23,70 @@ export async function POST(req: NextRequest) {
           apiKey,
         });
 
-        const systemPrompt = `You are a database systems professor. Generate a Multiple Choice Question (MCQ) quiz about Bitmap Indexes.
-Requirements:
+        // Detailed pedagogical guidelines per difficulty tier
+        let difficultyGuidance = '';
+        const normDiff = reqDifficulty.toLowerCase();
+
+        if (normDiff.includes('easy')) {
+          difficultyGuidance = `
+DIFFICULTY GUIDELINES (EASY):
+- Focus on foundational concepts of Bitmap Indexes in DBMS.
+- Topics: Low cardinality vs high cardinality (e.g. Status, Gender vs SSN/Email), 1 vs 0 bit representation, row ID / TID mapping to bit positions.
+- Basic SQL WHERE clause mapping: AND -> Bitwise AND, OR -> Bitwise OR, NOT -> Bitwise NOT.
+- Counting matching rows using bit counts / hardware POPCNT without reading base tables.
+- Calculating simple uncompressed size: N rows = N bits = ceil(N / 8) bytes.
+- Suitable workloads: Read-heavy OLAP / analytical warehousing vs write-heavy transactional OLTP.`;
+        } else if (normDiff.includes('hard')) {
+          difficultyGuidance = `
+DIFFICULTY GUIDELINES (HARD):
+- Focus on advanced, high-performance database engine internals.
+- Topics:
+  1. SIMD vectorization: AVX-2 (256-bit) and AVX-512 (512-bit) CPU instructions evaluating 512 rows per cycle.
+  2. Bit-Sliced Indexes (BSI): Decomposing numeric columns into binary bit-slices to compute SUM/AVG pushdown: SUM = sum(2^k * POPCNT(Slice_k)).
+  3. Range-Encoded Bitmap Indexes: V <= v_i encoding, evaluating inequalities in 1 vector lookup vs equality requiring 2 lookups.
+  4. Bitmap Join Indexes (BJI): Precomputing fact-to-dimension star schema joins directly indexing fact table row IDs.
+  5. Binned Bitmap Indexes: Partitioning continuous high-cardinality attributes into range bins with boundary candidate verification.
+  6. WAH / EWAH encoding formats: MSB distinguishing literal words from fill words (run length + fill bit).
+  7. Sorted TID pre-fetching to eliminate random disk head thrashing and read each heap page at most once.
+  8. De Morgan's Laws and boolean query tree algebraic rewriting in query optimizers.`;
+        } else {
+          difficultyGuidance = `
+DIFFICULTY GUIDELINES (MEDIUM):
+- Focus on intermediate database indexing trade-offs and compression techniques.
+- Topics:
+  1. Concurrency bottlenecks in OLTP: How updating a single row locks index vector segments.
+  2. Run-Length Encoding (RLE) and Word-Aligned Hybrid (WAH) compression for sparse vectors.
+  3. Roaring Bitmap architecture: Partitioning into 16-bit chunks using Array containers (<4096 values), Bitset containers, and Run containers.
+  4. Break-even threshold vs Table Scans: High selectivity (>25-30%) making sequential table scans faster than random index page access.
+  5. Vector maintenance on DML: Appending a bit to all vectors on row INSERT; clearing/setting bits on UPDATE.
+  6. Handling NULL values using dedicated NULL bitmap vectors.
+  7. Break-even formula: ceil(BuildTime / (TableScanTime - BitmapQueryTime)).
+  8. Why clustering/sorting base tables maximizes RLE run lengths.`;
+        }
+
+        const nonce = body.nonce || Date.now() + '_' + Math.random();
+        const systemPrompt = `You are a distinguished database systems professor and author. Generate a Multiple Choice Question (MCQ) quiz about Bitmap Indexes.
+
+${difficultyGuidance}
+
+REQUIREMENTS:
 - Topic: Bitmap Indexes in Database Management Systems (DBMS).
 - Number of questions: ${reqNumQuestions}.
 - Difficulty: ${reqDifficulty}.
-- Provide exactly 4 options per question.
+- Tone: Technically rigorous, precise, and educational.
+- Every question MUST have exactly 4 plausible options, with exactly one unambiguously correct answer.
+- Random Nonce for fresh generation: ${nonce}. Ensure these questions are brand new, creative, and do NOT repeat standard generic questions verbatim.
 - Format the output strictly as a JSON object with a "questions" array.
 
 JSON Format:
 {
   "questions": [
     {
-      "id": "ai_1",
+      "id": "ai_custom_${Date.now()}_1",
       "question": "Question text...",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswerIndex": 0,
-      "explanation": "Brief explanation of why this is correct.",
+      "explanation": "Detailed technical explanation of why this answer is correct and why the alternatives are incorrect.",
       "source": "Generated by AI • ${reqDifficulty}"
     }
   ]
@@ -44,9 +95,13 @@ JSON Format:
 
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini",
+          temperature: 0.9,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Generate ${reqNumQuestions} ${reqDifficulty} difficulty questions now.` }
+            { 
+              role: "user", 
+              content: `Generate ${reqNumQuestions} brand new, diverse ${reqDifficulty} difficulty questions now. Ensure none of these questions are repeats.` 
+            }
           ],
           response_format: { type: "json_object" },
         });
@@ -67,11 +122,11 @@ JSON Format:
           const validQuestions = questions.filter(q => 
             q && q.question && Array.isArray(q.options) && q.options.length >= 2 && typeof q.correctAnswerIndex === 'number'
           ).map((q, idx) => ({
-            id: q.id || `ai_${idx + 1}`,
+            id: q.id || `ai_gen_${Date.now()}_${idx + 1}`,
             question: q.question,
             options: q.options,
             correctAnswerIndex: Math.max(0, Math.min(q.options.length - 1, q.correctAnswerIndex)),
-            explanation: q.explanation || "Bitmap indexing optimizes query evaluation on low-cardinality attributes.",
+            explanation: q.explanation || "Bitmap indexing optimizes query evaluation on low-cardinality attributes through bitwise parallelism.",
             source: q.source || `Generated by AI • ${reqDifficulty}`
           }));
 
@@ -80,17 +135,18 @@ JSON Format:
           }
         }
       } catch (openAiError) {
-        console.warn('OpenAI Quiz Generation failed, falling back to dynamic AI question generator:', openAiError);
+        console.warn('OpenAI Quiz Generation failed, seamlessly using dynamic AI question generator:', openAiError);
       }
     }
 
-    // Dynamic AI Fallback when OPENAI_API_KEY is not set or OpenAI call fails
-    const fallbackQuestions = generateDynamicAiQuiz(reqNumQuestions, reqDifficulty);
+    // Dynamic AI Fallback when OPENAI_API_KEY is not set or OpenAI call fails.
+    // Guaranteed to generate new non-repeating questions filtered by difficulty and excludeIds.
+    const fallbackQuestions = generateDynamicAiQuiz(reqNumQuestions, reqDifficulty, excludeIds);
     return NextResponse.json({ questions: fallbackQuestions });
 
   } catch (error) {
     console.error('Quiz Generation Error:', error);
-    const fallbackQuestions = generateDynamicAiQuiz(reqNumQuestions, reqDifficulty);
+    const fallbackQuestions = generateDynamicAiQuiz(reqNumQuestions, reqDifficulty, excludeIds);
     return NextResponse.json({ questions: fallbackQuestions });
   }
 }
