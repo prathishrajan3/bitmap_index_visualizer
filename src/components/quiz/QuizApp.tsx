@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { PYQ_BANK, Question } from '@/lib/quiz/pyqBank';
+import { generateDynamicAiQuiz } from '@/lib/quiz/aiQuizGenerator';
 import { Brain, Trophy, AlertCircle, ArrowRight, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 
@@ -44,8 +45,6 @@ export function QuizApp() {
           body: JSON.stringify({ numQuestions, difficulty })
         });
         
-        if (!res.ok) throw new Error("Failed to generate quiz");
-        
         const data = await res.json();
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
@@ -58,9 +57,19 @@ export function QuizApp() {
           throw new Error("No questions returned");
         }
       } catch (err) {
-        console.error(err);
-        setErrorMsg('Failed to fetch AI questions. Try again or use PYQs.');
-        setState('setup');
+        console.warn('Network quiz fetch failed, seamlessly using local dynamic AI quiz:', err);
+        const fallback = generateDynamicAiQuiz(numQuestions, difficulty);
+        if (fallback && fallback.length > 0) {
+          setQuestions(fallback);
+          setCurrentIndex(0);
+          setScore(0);
+          setSelectedOption(null);
+          setShowExplanation(false);
+          setState('playing');
+        } else {
+          setErrorMsg('Failed to fetch AI questions. Try again or use PYQs.');
+          setState('setup');
+        }
       }
     }
   };
