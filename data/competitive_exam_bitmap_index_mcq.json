@@ -1,0 +1,834 @@
+[
+  {
+    "id": "pyq_1",
+    "question": "Which of the following scenarios is most suitable for creating a Bitmap Index in a relational database?",
+    "options": [
+      "A column with highly unique values like Social Security Numbers or UUIDs.",
+      "A column with a small number of distinct values (low cardinality) such as Gender, Marital Status, or Order State.",
+      "A primary key column in a high-throughput OLTP banking database.",
+      "A column containing long, variable-length unstructured text documents."
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Bitmap indexes are most effective on low-cardinality columns because each distinct value requires its own bitmap vector across all rows. High cardinality would create millions of sparse vectors, wasting excessive storage.",
+    "source": "GATE CS 2018",
+    "exam": "GATE CS 2018",
+    "category": "Suitability & Cardinality",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_2",
+    "question": "In a database query engine, which set of operations is primarily used when combining multiple Bitmap Indexes to resolve a complex WHERE clause?",
+    "options": [
+      "Relational JOIN, UNION, and INTERSECT operators",
+      "Hardware-accelerated bitwise AND, OR, and NOT operations",
+      "Arithmetic ADD, SUBTRACT, and MULTIPLY instructions",
+      "String pattern matching and regular expression evaluation"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Bitmap indexes excel because multi-condition predicate queries are translated directly into hardware-level bitwise boolean operations (AND for conjunction, OR for disjunction, NOT for negation), which evaluate across 64 rows per clock cycle on modern ALUs.",
+    "source": "ISRO Scientist (CS) 2016",
+    "exam": "ISRO Scientist (CS) 2016",
+    "category": "Boolean Logic & Bitwise Operations",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_3",
+    "question": "Why are Bitmap Indexes generally avoided in high-throughput OLTP (Online Transaction Processing) systems?",
+    "options": [
+      "They consume significantly more memory than B-Trees for integer columns.",
+      "They cannot index any numeric or floating-point data types.",
+      "Row modifications require locking the bitmap vector, causing severe concurrency bottlenecks across unrelated rows that share the same attribute value.",
+      "Standard ANSI SQL syntax does not permit the use of bitmap indexes."
+    ],
+    "correctAnswerIndex": 2,
+    "explanation": "In bitmap indexes, a single bit vector spans across thousands or millions of physical rows. Modifying a row locks the vector or segment, blocking any concurrent transaction attempting to insert or update any other row sharing that attribute value.",
+    "source": "UGC NET CS 2019",
+    "exam": "UGC NET CS 2019",
+    "category": "Concurrency & OLTP Lock Contention",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_4",
+    "question": "Which family of compression algorithms is most widely adopted to compress sparse Bitmap Indexes in analytical databases?",
+    "options": [
+      "Huffman Coding and Shannon-Fano entropy trees",
+      "Run-Length Encoding (RLE) and Word-Aligned Hybrid (WAH) schemes",
+      "Lempel-Ziv-Welch (LZW) dictionary compression",
+      "Deflate algorithm with fixed sliding windows"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Sparse bitmap vectors contain long sequences of identical bits (consecutive zeros). Run-Length Encoding (RLE) variants such as WAH, EWAH, and Roaring Bitmaps compress these runs into compact word tokens and allow direct bitwise operations without prior decompression.",
+    "source": "GATE CS 2021",
+    "exam": "GATE CS 2021",
+    "category": "Compression & Storage",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_5",
+    "question": "A table contains 1,000,000 rows. A column 'Customer_Tier' has exactly 4 distinct values. What is the approximate uncompressed storage required for the entire bitmap index on this column?",
+    "options": [
+      "4,000,000 Bytes (~3.81 MB)",
+      "500,000 Bytes (~500 KB / 488.28 KiB)",
+      "4,000 Bytes (~4 KB)",
+      "32,000,000 Bytes (~30.5 MB)"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "4 distinct values require 4 bitmap vectors. Each vector contains 1,000,000 bits. Total bits = 4 * 1,000,000 = 4,000,000 bits. Total Bytes = 4,000,000 / 8 = 500,000 Bytes (~500 KB).",
+    "source": "BARC CS 2017",
+    "exam": "BARC CS 2017",
+    "category": "Storage & Memory Sizing",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_6",
+    "question": "Consider a table 'Staff' with bitmap indexes on 'Department' (5 distinct values) and 'Shift' (3 distinct values). To evaluate the query 'WHERE Department = Sales OR Shift = Night', how does the database execute this?",
+    "options": [
+      "By executing two full sequential table scans and deduplicating rows in a hash set",
+      "By performing a single bitwise OR operation between the 'Sales' bitmap vector and the 'Night' bitmap vector",
+      "By performing a bitwise AND operation between the 'Sales' and 'Night' vectors",
+      "By using a B-Tree index to find Sales and then scanning the entire table for Night shift"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Disjunctive conditions ('OR') correspond directly to bitwise OR operations. The engine fetches the 'Sales' vector and the 'Night' vector and performs a fast bitwise OR in hardware registers.",
+    "source": "GATE IT 2015",
+    "exam": "GATE IT 2015",
+    "category": "Boolean Logic & Bitwise Operations",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_7",
+    "question": "Which of the following comparative statements between B-Tree and Bitmap indexes is correct?",
+    "options": [
+      "B-Trees are preferred for data warehousing aggregate queries; Bitmaps are preferred for high-frequency OLTP write transactions.",
+      "B-Trees are optimal for high-cardinality attributes; Bitmaps are optimal for low-cardinality attributes combined across multiple filters.",
+      "B-Trees support instant hardware COUNT(*) operations without reading rows; Bitmaps require reading every page from disk.",
+      "Bitmap indexes consume more physical disk space than B-Trees when indexing primary key columns."
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "B-Trees excel at pinpoint range queries and point lookups on high-cardinality unique keys. Bitmap indexes excel at combining multi-attribute filter predicates on low-cardinality columns in read-dominated analytical environments.",
+    "source": "UGC NET CS 2020",
+    "exam": "UGC NET CS 2020",
+    "category": "Comparative Indexing",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_8",
+    "question": "A table T has a bitmap index on column C which has 6 distinct values. When a single new row is inserted into T, how is the bitmap index updated?",
+    "options": [
+      "All 6 bitmap vectors must be updated by appending a single bit (1 for the matching value, 0 for the other 5).",
+      "Only the single bitmap vector corresponding to the inserted value is updated.",
+      "No bitmap vectors are modified until an explicit REINDEX command is triggered by an administrator.",
+      "The entire bitmap index is marked invalid and dropped from storage."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Because bit positions map directly to physical row positions (tuple IDs), positional alignment must be maintained across all vectors. Therefore, every bitmap vector in the index must append a bit.",
+    "source": "ISRO Scientist (CS) 2019",
+    "exam": "ISRO Scientist (CS) 2019",
+    "category": "Index Maintenance & DML",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_9",
+    "question": "What is a 'Roaring Bitmap' in contemporary database architecture?",
+    "options": [
+      "A proprietary bitmap index available exclusively in mainframe database engines.",
+      "An uncompressed 128-bit SIMD vector stored in GPU shared memory.",
+      "A hybrid compressed bitmap that dynamically partitions 32-bit integer spaces into 16-bit chunks using array, bitset, and run containers.",
+      "A machine learning classifier used to predict column cardinality during query compilation."
+    ],
+    "correctAnswerIndex": 2,
+    "explanation": "Roaring Bitmaps partition 32-bit integers into 16-bit chunks and dynamically store each chunk in an Array Container (for sparse entries < 4096 elements), a Bitset Container (for dense entries), or a Run Container (for contiguous intervals).",
+    "source": "GATE CS 2022",
+    "exam": "GATE CS 2022",
+    "category": "Compression & Storage",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_10",
+    "question": "To evaluate a SQL WHERE clause containing 'Condition_A AND NOT Condition_B' using bitmap indexes, which operations are executed?",
+    "options": [
+      "Vector_A XOR Vector_B",
+      "Bitwise NOT on Vector_B, followed by bitwise AND with Vector_A: Vector_A AND (~Vector_B)",
+      "NOT (Vector_A AND Vector_B)",
+      "Vector_A OR Vector_B followed by bit-shifting"
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "'NOT Condition_B' inverts all bits of Vector_B (flipping 1s to 0s and 0s to 1s). The engine then performs a bitwise AND between Vector_A and the inverted vector.",
+    "source": "BARC CS 2021",
+    "exam": "BARC CS 2021",
+    "category": "Boolean Logic & Bitwise Operations",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_11",
+    "question": "What is meant by the 'cardinality' of a relational database column in index design?",
+    "options": [
+      "The total count of physical pages allocated to the table on disk.",
+      "The number of unique or distinct data values present in that column.",
+      "The maximum character length defined in the column's VARCHAR declaration.",
+      "The total count of foreign key constraints referencing the table."
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Column cardinality is the count of distinct values in that column. A low-cardinality column has very few distinct values relative to total table rows, making it prime for bitmap indexing.",
+    "source": "GATE CS 2008",
+    "exam": "GATE CS 2008",
+    "category": "Suitability & Cardinality",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_12",
+    "question": "Why does indexing a high-cardinality column (e.g., National ID with 50,000,000 unique values in a 50,000,000-row table) with an uncompressed Bitmap Index cause catastrophic space overhead?",
+    "options": [
+      "Because uncompressed bitmap indexes allocate a bit for every row in every vector, resulting in N * C bits (50M * 50M bits = 312.5 TB).",
+      "Because SQL standards limit bitmap indexes to a maximum of 256 total rows.",
+      "Because floating-point conversion errors cause database kernel panics.",
+      "Because high-cardinality columns cannot be represented in binary notation."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Uncompressed storage is (Rows * Distinct Values) / 8 bytes. For 50,000,000 rows and 50,000,000 distinct values, size is (50M * 50M) / 8 = 3.125 * 10^14 bytes (~312.5 Terabytes), which is disastrously inefficient.",
+    "source": "NIELIT Scientist B 2020",
+    "exam": "NIELIT Scientist B 2020",
+    "category": "Storage & Memory Sizing",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_13",
+    "question": "How can a database engine evaluate 'SELECT COUNT(*) FROM Orders WHERE Status = Delivered' using a Bitmap Index without reading any table rows from storage?",
+    "options": [
+      "By calculating the population count (POPCNT / number of set bits) directly on the Delivered bitmap vector.",
+      "By consulting the database transaction undo log records.",
+      "By performing random sampling across the primary key B-Tree leaf pages.",
+      "By reading the catalog metadata table which updates on every SELECT statement."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Because each bit position represents a row and a set bit (1) indicates a match, the query engine can execute the CPU hardware POPCNT instruction directly on the bitmap in RAM, answering the query in microseconds without disk I/O.",
+    "source": "UGC NET CS 2018",
+    "exam": "UGC NET CS 2018",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_14",
+    "question": "In a table where column 'Subscription' is indexed by bitmaps, an UPDATE modifies row 25 from 'Free' to 'Premium'. What bit operations occur?",
+    "options": [
+      "The entire bitmap index is deleted and rebuilt from scratch.",
+      "Bit 25 in the 'Free' vector is cleared (1 to 0), and bit 25 in the 'Premium' vector is set (0 to 1).",
+      "Bit 25 in both vectors is set to 1 to indicate an active transaction.",
+      "Row 25 is moved to the end of the table and assigned a new tuple ID."
+    ],
+    "correctAnswerIndex": 1,
+    "explanation": "Updating an indexed attribute requires clearing the bit corresponding to the row offset in the old value's vector (1 -> 0) and setting the bit in the new value's vector (0 -> 1).",
+    "source": "GATE IT 2007",
+    "exam": "GATE IT 2007",
+    "category": "Index Maintenance & DML",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_15",
+    "question": "In Word-Aligned Hybrid (WAH) bitmap compression, what is the significance of the Most Significant Bit (MSB) in a 32-bit encoded word?",
+    "options": [
+      "MSB = 0 indicates a literal word of 31 uncompressed bits; MSB = 1 indicates a fill word encoding a run of identical words.",
+      "MSB = 1 indicates the vector is encrypted; MSB = 0 indicates plain text.",
+      "MSB indicates whether the word belongs to an integer column or a string column.",
+      "MSB indicates whether the row belongs to the primary key table or foreign key table."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In WAH, the MSB acts as a header flag: 0 signifies a literal word containing 31 raw bits, whereas 1 signifies a fill word where the remaining 31 bits encode the run type (all-0s or all-1s) and the run length.",
+    "source": "ISRO Scientist (CS) 2018",
+    "exam": "ISRO Scientist (CS) 2018",
+    "category": "Compression & Storage",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_16",
+    "question": "What is a 'Bitmap Join Index' (BJI) and what fundamental query optimization problem does it solve in Star Schemas?",
+    "options": [
+      "It indexes Fact table row IDs based on Dimension table column values, precomputing relational joins and eliminating runtime join latency.",
+      "It combines two B-Tree root nodes into a single hash map.",
+      "It automatically partitions a fact table across multiple physical hard drives based on foreign key checksums.",
+      "It replaces SQL subqueries with recursive common table expressions."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "A Bitmap Join Index precomputes the join between a Dimension table and a massive Fact table. The bitmap for a dimension attribute (e.g. Region = 'East') directly marks the Fact table row IDs matching that criterion, eliminating expensive runtime join operations.",
+    "source": "GATE CS 2014",
+    "exam": "GATE CS 2014",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_17",
+    "question": "In database break-even analysis for index creation, what does the break-even point quantify?",
+    "options": [
+      "The minimum number of queries required such that the cumulative query time savings offset the upfront index construction time: ceil(BuildTime / (TableScanTime - BitmapQueryTime)).",
+      "The row count where table scan and bitmap index execute in exactly identical time.",
+      "The maximum memory threshold before the database server runs out of RAM.",
+      "The percentage of NULL values required to trigger automatic index deletion."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Building an index incurs an initial build cost. The break-even formula calculates how many times a query must be repeated so that the time saved per query (ScanTime - BitmapQueryTime) equals or exceeds the index build time.",
+    "source": "BARC CS 2019",
+    "exam": "BARC CS 2019",
+    "category": "Query Optimization & Cost Modeling",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_18",
+    "question": "How do modern analytical database engines handle NULL values when indexing a column with a Bitmap Index?",
+    "options": [
+      "By maintaining a dedicated bitmap vector specifically representing NULL status, setting bit i = 1 if row i is NULL.",
+      "By setting all bits to 1 in all vectors for that row.",
+      "NULL values are strictly forbidden in any table containing a bitmap index.",
+      "By hashing the string 'NULL' into a 32-bit CRC checksum."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Modern bitmap engines dedicate an explicit bitmap vector to represent NULL. This enables instantaneous evaluation of 'IS NULL' and 'IS NOT NULL' conditions using standard bitwise logic.",
+    "source": "UGC NET CS 2021",
+    "exam": "UGC NET CS 2021",
+    "category": "Index Architecture",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_19",
+    "question": "Under what condition does a sequential Table Scan typically outperform a Bitmap Index lookup on modern server hardware?",
+    "options": [
+      "When query selectivity is high (e.g. > 25-30% of total rows match), because contiguous sequential I/O outperforms random page fetches.",
+      "When the table contains fewer than 3 columns.",
+      "When the query combines multiple predicates using bitwise AND.",
+      "When the database runs on a multi-core processor."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "When a large percentage of rows match, fetching records identified by the bitmap index requires touching almost every data page via random I/O or scattered lookups. A sequential scan reading contiguous disk blocks sequentially with hardware pre-fetching is faster.",
+    "source": "GATE CS 2016",
+    "exam": "GATE CS 2016",
+    "category": "Query Optimization & Cost Modeling",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_20",
+    "question": "How does SIMD (Single Instruction, Multiple Data) AVX-512 vectorization accelerate bitmap query execution?",
+    "options": [
+      "AVX-512 registers evaluate bitwise boolean operations across 512 rows simultaneously in a single CPU instruction clock cycle.",
+      "It stores the entire relational database inside the CPU L1 cache.",
+      "It automatically converts SQL queries into compiled Python bytecode.",
+      "It replaces disk storage with optical holographic crystals."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "AVX-512 provides 512-bit registers. A single bitwise instruction (VPAND, VPOR, VPNOT) operates on 512 bits at once, effectively evaluating filter conditions for 512 records in a single CPU cycle.",
+    "source": "NIELIT Scientist B 2022",
+    "exam": "NIELIT Scientist B 2022",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_21",
+    "question": "What is a 'Bit-Sliced Index' (BSI) and how does it compute aggregate functions like 'SUM(Salary)' without accessing base table rows?",
+    "options": [
+      "By decomposing numeric values into binary bit slices and evaluating SUM = sum(2^k * POPCNT(Slice_k)) across all bit slices.",
+      "By computing the Fourier transform of the salary column.",
+      "By maintaining precomputed floating-point sums inside the transaction redo log.",
+      "By sorting the table in descending order and multiplying the top value by row count."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "A Bit-Sliced Index represents numeric values in binary positional notation, storing each bit position k as an individual bitmap vector. The aggregate SUM is calculated as the weighted sum: sum(2^k * POPCNT(Slice_k)), requiring zero base table lookups.",
+    "source": "GATE CS 2011",
+    "exam": "GATE CS 2011",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_22",
+    "question": "What is the primary advantage of a 'Range-Encoded Bitmap Index' over a standard equality-encoded bitmap index?",
+    "options": [
+      "Range queries (e.g., Value <= C) can be evaluated using a single bitmap vector lookup without any bitwise OR operations.",
+      "It completely eliminates the need for CPU arithmetic logic units.",
+      "It can only be used on non-numeric string data types.",
+      "It automatically encrypts table data against unauthorized reading."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In a range-encoded index, the i-th vector sets a bit for all rows where Value <= Value_i. Hence, any one-sided range query (x <= 50) is answered by inspecting exactly one vector, whereas equality-encoded indexes require OR-ing multiple vectors.",
+    "source": "ISRO Scientist (CS) 2020",
+    "exam": "ISRO Scientist (CS) 2020",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_23",
+    "question": "A table contains 640,000 rows. A column 'Region' has 8 distinct values. What is the total uncompressed storage size for all 8 bitmap vectors?",
+    "options": [
+      "640,000 Bytes (~625 KB)",
+      "5,120,000 Bytes (~4.88 MB)",
+      "80,000 Bytes (~78.125 KB)",
+      "64,000 Bytes (~62.5 KB)"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Each vector requires 640,000 bits = 80,000 Bytes. For 8 distinct values: 8 * 80,000 Bytes = 640,000 Bytes (~625 KB).",
+    "source": "GATE IT 2006",
+    "exam": "GATE IT 2006",
+    "category": "Storage & Memory Sizing",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_24",
+    "question": "Why does sorting or physically clustering the base table on the indexed column significantly enhance Run-Length Encoding (RLE) bitmap compression?",
+    "options": [
+      "It groups identical values into contiguous rows, creating exceptionally long uninterrupted runs of 1s and 0s that compress into minimal tokens.",
+      "It reduces the number of columns in the database catalog.",
+      "It enables the query planner to bypass SQL parsing.",
+      "It converts 64-bit integers into 8-bit characters."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "RLE compresses consecutive repeated bit values. When records are sorted or clustered by the indexed attribute, matching records appear sequentially, producing maximum-length runs of 1s (and 0s), maximizing compression ratio.",
+    "source": "UGC NET CS 2017",
+    "exam": "UGC NET CS 2017",
+    "category": "Compression & Storage",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_25",
+    "question": "How do database query optimizers apply De Morgan's Laws to rewrite complex negated boolean conditions when using Bitmap Indexes?",
+    "options": [
+      "By transforming expressions like NOT (A OR B) into (NOT A) AND (NOT B) to enable early pruning when sparse vectors evaluate to all zeros.",
+      "By converting all bitwise operations into floating-point matrix dot products.",
+      "By dropping the bitmap index and replacing it with a full outer join.",
+      "By reversing the order of columns in the physical table storage."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "De Morgan's laws allow optimizers to rewrite negated disjunctions into conjunctions of inverted vectors. In conjunctions, if an intermediate vector evaluates to zero, subsequent bitwise operations can be short-circuited immediately.",
+    "source": "BARC CS 2022",
+    "exam": "BARC CS 2022",
+    "category": "Query Optimization & Cost Modeling",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_26",
+    "question": "In a physical bitmap index implementation, what does a bit position (offset k) directly correspond to?",
+    "options": [
+      "The physical or logical Tuple ID (Row ID / TID) representing the k-th record in the table.",
+      "The primary key hash value divided by 32.",
+      "The memory address of the database buffer pool.",
+      "The disk sector number on the hard drive platter."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In bitmap indexing, the bit position maps directly to the ordinal row number or Tuple Identifier (TID). Bit k represents the k-th row in the underlying physical storage.",
+    "source": "GATE CS 2019",
+    "exam": "GATE CS 2019",
+    "category": "Index Architecture",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_27",
+    "question": "To evaluate 'WHERE Status = Active OR Status = Pending OR Status = Review' using bitmap indexes, what sequence of operations is performed?",
+    "options": [
+      "Active_Vector OR Pending_Vector OR Review_Vector",
+      "Active_Vector AND Pending_Vector AND Review_Vector",
+      "Active_Vector XOR Pending_Vector XOR Review_Vector",
+      "NOT (Active_Vector OR Pending_Vector OR Review_Vector)"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Multiple OR conditions between distinct values of the same column are resolved by taking the bitwise OR of their respective bitmap vectors.",
+    "source": "NIELIT Scientist B 2019",
+    "exam": "NIELIT Scientist B 2019",
+    "category": "Boolean Logic & Bitwise Operations",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_28",
+    "question": "How do database engines handle record deletions in bitmap indexes without shifting all subsequent bit positions?",
+    "options": [
+      "By maintaining an 'Existence' or 'Tombstone' bitmap vector where active rows have bit 1 and deleted rows have bit 0, AND-ing it with every query result.",
+      "By immediately rewriting all bitmap vectors from scratch upon every DELETE.",
+      "By replacing deleted bits with random binary noise.",
+      "By moving deleted rows into an unindexed temporary table."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Shifting millions of bits on every row delete is computationally prohibitive. Engines maintain an existence/tombstone vector. Every query result is combined with 'AND Existence_Vector' to filter out deleted rows instantly.",
+    "source": "ISRO Scientist (CS) 2017",
+    "exam": "ISRO Scientist (CS) 2017",
+    "category": "Index Maintenance & DML",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_29",
+    "question": "Which database workload architectural paradigm derives the highest performance benefit from Bitmap Indexing?",
+    "options": [
+      "OLAP (Online Analytical Processing) and Data Warehouses with ad-hoc analytical queries and batch ETL updates.",
+      "OLTP (Online Transaction Processing) with thousands of single-row concurrent INSERT/UPDATE statements per second.",
+      "In-memory key-value caches with sub-millisecond single-key lookups.",
+      "Graph databases performing recursive depth-first path traversals."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Bitmap indexes are tailor-made for read-heavy OLAP workloads where large datasets are analyzed with multi-predicate filtering and updates occur during scheduled batch ETL windows.",
+    "source": "UGC NET CS 2016",
+    "exam": "UGC NET CS 2016",
+    "category": "Comparative Indexing",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_30",
+    "question": "How does Multi-Component (Valiant-Brebner) bitmap encoding reduce storage for an attribute with cardinality C = 100?",
+    "options": [
+      "By decomposing C into base factors (e.g. 10 * 10), representing each value with 2 components and reducing vector count from 100 to 10 + 10 = 20 vectors.",
+      "By converting 100 values into a 100-node binary search tree.",
+      "By discarding 80 of the least frequent values from the index.",
+      "By using lossy compression that approximates row matches."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Multi-component encoding decomposes cardinality C into factors c1 * c2 * ... * ck = C. Instead of allocating C vectors, it allocates sum(ci) vectors (e.g., 10 + 10 = 20 vectors for C = 100), drastically reducing memory.",
+    "source": "GATE CS 2017",
+    "exam": "GATE CS 2017",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_31",
+    "question": "What is a 'Binned Bitmap Index' and how does it index continuous floating-point attributes (e.g., Temperature, Price)?",
+    "options": [
+      "By partitioning continuous values into discrete range intervals (bins) and generating one bitmap vector per bin.",
+      "By rounding all numbers to the nearest power of 2 and storing them in a hash table.",
+      "By assigning a separate bitmap vector to every individual micro-degree floating-point number.",
+      "By storing continuous values in an unindexed append-only log file."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Continuous data has infinite potential cardinality. Binned bitmap indexes group values into range bins (e.g., [0-10), [10-20)), creating a manageable number of bitmap vectors to prune non-matching data quickly.",
+    "source": "BARC CS 2018",
+    "exam": "BARC CS 2018",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_32",
+    "question": "In a Binned Bitmap Index, what is the purpose of the 'Candidate Verification' phase?",
+    "options": [
+      "To inspect the base table rows for candidates located in boundary bins to eliminate false positives.",
+      "To verify the cryptographic signature of the database license.",
+      "To check whether the CPU registers support 64-bit operations.",
+      "To sort the entire table prior to returning records."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Interior bins fall completely within the query range and match 100%. However, boundary/edge bins partially overlap the query range, so rows matching boundary bins must be verified against actual base table values to eliminate false positives.",
+    "source": "GATE IT 2008",
+    "exam": "GATE IT 2008",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_33",
+    "question": "What is the asymptotic time complexity of computing the intersection (AND) between two Roaring Bitmaps with M active containers?",
+    "options": [
+      "O(M) where matching container pairs are intersected sequentially or in parallel using SIMD kernels.",
+      "O(N^2) where N is the total row count of the base table.",
+      "O(2^M) exponential complexity.",
+      "O(1) constant time regardless of container count."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Roaring Bitmaps store 16-bit container keys in sorted order. Intersecting two bitmaps evaluates matching container pairs linearly in O(M) time using container-specific intersection algorithms.",
+    "source": "UGC NET CS 2022",
+    "exam": "UGC NET CS 2022",
+    "category": "Compression & Storage",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_34",
+    "question": "How does EWAH (Enhanced Word-Aligned Hybrid) compression improve over standard WAH compression?",
+    "options": [
+      "An EWAH marker header encodes both the fill word run length and the count of subsequent literal words, avoiding marker overhead for alternating patterns.",
+      "EWAH uses 128-bit floating point words instead of 32-bit integers.",
+      "EWAH replaces all bitwise operations with SQL joins.",
+      "EWAH compresses text columns using LZMA dictionaries."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In standard WAH, alternating between fills and single literals incurs high marker overhead. EWAH uses a marker word that specifies both the length of the fill run and how many uncompressed literal words immediately follow.",
+    "source": "ISRO Scientist (CS) 2021",
+    "exam": "ISRO Scientist (CS) 2021",
+    "category": "Compression & Storage",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_35",
+    "question": "In PostgreSQL, how does a 'Bitmap Heap Scan' handle memory limits when the generated bitmap exceeds the allocated 'work_mem'?",
+    "options": [
+      "It downgrades from an 'Exact Bitmap' (storing exact tuple TIDs) to a 'Lossy Bitmap' (storing only page IDs), requiring re-checking heap tuples against the filter condition.",
+      "It terminates the query execution and returns a fatal out-of-memory error.",
+      "It swaps the bitmap into uncompressed disk swap space.",
+      "It restarts the PostgreSQL service process automatically."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "When TID tracking exceeds work_mem, PostgreSQL switches to lossy mode: it remembers which disk pages contain matching rows rather than individual tuple IDs. During page fetch, each tuple on that page is re-checked against original query conditions.",
+    "source": "GATE CS 2013",
+    "exam": "GATE CS 2013",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_36",
+    "question": "In Roaring Bitmaps, what is the exact cardinal element threshold that causes an Array Container to be converted into a Bitset Container?",
+    "options": [
+      "4,096 elements (since 4,096 * 16-bit integers = 8,192 bytes, which equals the size of a 65,536-bit bitset).",
+      "1,024 elements.",
+      "65,536 elements.",
+      "256 elements."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "A 16-bit chunk covers 65,536 integers. A bitset container uses 65,536 bits = 8,192 bytes. In an array container, each integer uses 2 bytes (16 bits). At 4,096 elements, 4,096 * 2 = 8,192 bytes. Beyond 4,096 elements, the bitset is strictly more compact.",
+    "source": "NIELIT Scientist B 2023",
+    "exam": "NIELIT Scientist B 2023",
+    "category": "Compression & Storage",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_37",
+    "question": "In branchless bitmap index decompression and bit-scanning, which arithmetic bit trick isolates the lowest set bit from a non-zero register x?",
+    "options": [
+      "x & (-x)",
+      "x | (x + 1)",
+      "x ^ (~x)",
+      "x >> 1"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In two's complement arithmetic, -x = (~x + 1). Computing x & (-x) isolates the least significant bit set to 1, executing in a single CPU instruction without branch misprediction penalties.",
+    "source": "BARC CS 2023",
+    "exam": "BARC CS 2023",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_38",
+    "question": "Which CPU instructions are used to rapidly convert set bits in a bitmap vector into matching physical Row IDs?",
+    "options": [
+      "Count Trailing Zeros (CTZ / TZCNT) and Bit Scan Forward (BSF)",
+      "Floating-point square root (FSQRT)",
+      "String compare (CMPSB)",
+      "Memory barrier (MFENCE)"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "CTZ / BSF instructions count trailing zeros, immediately returning the bit index of the next set bit in a single CPU clock cycle, allowing engines to jump directly between matching row positions.",
+    "source": "GATE CS 2020",
+    "exam": "GATE CS 2020",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_39",
+    "question": "How can a query engine optimize 'SELECT COUNT(DISTINCT Customer_State) FROM Customers' using a Bitmap Index?",
+    "options": [
+      "By counting the number of bitmap vectors defined for the Customer_State index that contain at least one set bit (POPCNT > 0).",
+      "By reading every customer address from the base table.",
+      "By sorting the primary key table in ascending order.",
+      "By calculating the MD5 hash of each state abbreviation."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Each distinct state has its own bitmap vector. If a vector has POPCNT > 0, that state exists in the table. Counting how many vectors have at least one set bit yields COUNT(DISTINCT) instantaneously without touching data pages.",
+    "source": "UGC NET CS 2015",
+    "exam": "UGC NET CS 2015",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_40",
+    "question": "In a Data Warehouse with a 100,000,000-row Sales Fact table and a Store Dimension table, what is the primary benefit of a Bitmap Join Index on Store.City?",
+    "options": [
+      "Queries filtering by Store.City avoid performing an expensive relational join between the 100M-row Fact table and the Store table at query execution time.",
+      "It allows the Store table to be dropped from the database entirely.",
+      "It reduces the Fact table row count by 50%.",
+      "It automatically converts SQL queries into MapReduce jobs."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "A Bitmap Join Index precomputes the join condition and directly stores Fact table row positions matching each dimension city, eliminating runtime hash joins or nested loop joins across hundreds of millions of fact rows.",
+    "source": "ISRO Scientist (CS) 2022",
+    "exam": "ISRO Scientist (CS) 2022",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_41",
+    "question": "A table contains 80,000 rows. A boolean column 'Is_Active' is indexed with two uncompressed bitmap vectors (True, False). What is the total storage required?",
+    "options": [
+      "20,000 Bytes (~19.53 KB)",
+      "80,000 Bytes (~78.125 KB)",
+      "160,000 Bytes (~156.25 KB)",
+      "10,000 Bytes (~9.76 KB)"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Each vector has 80,000 bits = 10,000 Bytes. Two vectors (True, False) consume 2 * 10,000 Bytes = 20,000 Bytes (~19.53 KB).",
+    "source": "GATE IT 2005",
+    "exam": "GATE IT 2005",
+    "category": "Storage & Memory Sizing",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_42",
+    "question": "Why are Bitmap Indexes particularly suitable for ad-hoc analytical queries with multiple filter criteria on different columns?",
+    "options": [
+      "Bitmap vectors from different columns can be intersected (AND) or unioned (OR) seamlessly using uniform bitwise operations before reading any heap pages.",
+      "Bitmap indexes eliminate the need for SQL WHERE clauses.",
+      "Bitmap indexes automatically generate primary keys for tables.",
+      "Bitmap indexes execute exclusively on graphics cards."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Unlike composite B-Trees which require filters to match index prefix order, bitmap vectors from completely separate columns (e.g. Age, State, Gender) can be combined arbitrarily on the fly via bitwise logic.",
+    "source": "NIELIT Scientist B 2018",
+    "exam": "NIELIT Scientist B 2018",
+    "category": "Suitability & Cardinality",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_43",
+    "question": "What is the consequence of frequent single-row INSERT and UPDATE transactions on a table with multiple Bitmap Indexes?",
+    "options": [
+      "High transaction lock contention, index fragmentation, and massive redo/undo log generation due to frequent vector page modifications.",
+      "Automatic conversion of all bitmap indexes into hash indexes.",
+      "Immediate deletion of the table from disk.",
+      "Zero overhead because bitmap indexes do not require transaction logging."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Each row modification requires updating multiple bitmap vectors. This creates massive transaction log records for modified vector blocks and causes high lock contention on bitmap segments, severely hurting write throughput.",
+    "source": "BARC CS 2016",
+    "exam": "BARC CS 2016",
+    "category": "Concurrency & OLTP Lock Contention",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_44",
+    "question": "What is an 'Interval-Encoded Bitmap Index' and how does it optimize arbitrary two-sided range queries [v_a <= x <= v_b]?",
+    "options": [
+      "Each bitmap vector encodes an interval, enabling any two-sided range query to be answered with at most two bitwise operations.",
+      "It stores timestamps as Unix epochs in a circular buffer.",
+      "It requires recalculating all intervals on every query execution.",
+      "It converts continuous numbers into random character strings."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Interval-encoded bitmap indexes map overlapping or hierarchical intervals to vectors. Any two-sided range query [a, b] can be evaluated with at most two bitmap operations (e.g., subtracting or intersecting boundary interval vectors).",
+    "source": "UGC NET CS 2023",
+    "exam": "UGC NET CS 2023",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_45",
+    "question": "In bitmap algebra, which operation is performed to find rows that satisfy 'Condition A' or 'Condition B', but NOT both (symmetric difference)?",
+    "options": [
+      "Bitwise XOR (Exclusive OR)",
+      "Bitwise AND",
+      "Bitwise NAND",
+      "Bitwise NOR"
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "The bitwise XOR operator outputs 1 if and only if exactly one of the two input bits is 1, perfectly matching the symmetric difference condition (A XOR B).",
+    "source": "GATE CS 2015",
+    "exam": "GATE CS 2015",
+    "category": "Boolean Logic & Bitwise Operations",
+    "difficulty": "Easy"
+  },
+  {
+    "id": "pyq_46",
+    "question": "Why do database engines sort the matching Tuple IDs (TIDs) extracted from a bitmap index in ascending order before fetching base table pages?",
+    "options": [
+      "To transform random disk head movements into sequential disk head traversal, ensuring each physical page is fetched into buffer memory at most once.",
+      "Because SQL queries require an implicit ORDER BY on primary keys.",
+      "To prevent database deadlock between read transactions and background checkpoints.",
+      "To verify page checksums in alphabetical order."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Ascending TID order corresponds to physical disk block order. Accessing pages sequentially avoids buffer pool thrashing, leverages OS readahead caches, and ensures each disk block is visited only once.",
+    "source": "ISRO Scientist (CS) 2015",
+    "exam": "ISRO Scientist (CS) 2015",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_47",
+    "question": "How do modern columnar database architectures (e.g. ClickHouse, DuckDB, Snowflake) utilize bitmasks during query execution?",
+    "options": [
+      "They generate contiguous bitmasks in CPU registers to filter vectorized data chunks without decompressing or copying non-matching columns.",
+      "They convert all SQL strings into base64 bitmasks.",
+      "They store table metadata inside CPU floating-point registers.",
+      "They prevent users from executing GROUP BY queries."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In columnar execution, filter predicates produce compact bitmasks. Subsequent columnar expressions are evaluated only on rows where the bitmask is 1, maximizing CPU cache utilization and SIMD vectorization.",
+    "source": "GATE CS 2010",
+    "exam": "GATE CS 2010",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_48",
+    "question": "When using a Bit-Sliced Index (BSI) to compute 'AVG(Score)' for rows matching a predicate P, how is the average calculated?",
+    "options": [
+      "Evaluate matching mask M from predicate P; compute BSI sum via sum(2^k * POPCNT(Slice_k AND M)); compute count via POPCNT(M); divide sum by count.",
+      "Multiply the maximum bit slice by the minimum bit slice.",
+      "Sample 10 rows randomly and compute their arithmetic mean.",
+      "Convert all bit slices into standard normal distribution z-scores."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "The filter condition produces a match mask M. The BSI aggregate sum is computed by masking each bit slice with M and summing powers of 2. The count of matching records is POPCNT(M). Dividing sum by count produces AVG(Score) with zero base table page reads.",
+    "source": "BARC CS 2024",
+    "exam": "BARC CS 2024",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_49",
+    "question": "What CPU architectural property gives Bitmap Index scanning a major advantage over B-Tree pointer chasing?",
+    "options": [
+      "Sequential memory access across contiguous bit vectors maximizes CPU L1/L2 cache hit rates and eliminates pointer indirection cache misses.",
+      "Bitmap vectors bypass the CPU registers and execute in RAM directly.",
+      "B-Tree nodes cannot be stored in semiconductor memory.",
+      "Bitmap indexes execute exclusively in the operating system page table."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Traversing B-Trees requires following pointer chains through tree nodes, causing frequent CPU cache misses. In contrast, scanning bitmap vectors reads contiguous memory words sequentially, fully exploiting CPU cache prefetching and hardware pipelining.",
+    "source": "UGC NET CS 2014",
+    "exam": "UGC NET CS 2014",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Medium"
+  },
+  {
+    "id": "pyq_50",
+    "question": "How can a query engine evaluate a top-k query (e.g., 'ORDER BY Price DESC LIMIT 5') using Bit-Sliced Indexes without sorting the entire table?",
+    "options": [
+      "By scanning bit slices greedily from the Most Significant Bit (MSB) to the Least Significant Bit (LSB), pruning candidate rows that have bit 0 at each slice until only 5 rows remain.",
+      "By sorting the primary key column in reverse alphabetical order.",
+      "By constructing a binomial heap inside the database transaction log.",
+      "By computing the hash value of the top 5 records."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In binary representation, any row with a 1 in the MSB is strictly greater than any row with a 0. Scanning from MSB downwards allows the engine to keep candidate rows with set bits, rapidly pruning the candidate set to 5 rows without sorting the dataset.",
+    "source": "GATE CS 2024",
+    "exam": "GATE CS 2024",
+    "category": "Star Schemas & Advanced Indexing",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_51",
+    "question": "Why do GPU-accelerated database systems achieve orders-of-magnitude higher throughput on bitmap index operations than multi-core CPUs?",
+    "options": [
+      "Massive memory bandwidth (>1-2 TB/s) and thousands of SIMT compute cores evaluating bitwise boolean kernels in parallel across millions of rows.",
+      "GPUs do not require any memory controllers or PCIe buses.",
+      "GPUs use ternary logic (trits) instead of binary bits.",
+      "GPUs automatically compile SQL queries into optical lasers."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "Bitmap operations are memory-bandwidth-bound and embarrassingly parallel. GPUs feature ultra-high memory bandwidth (HBM) and thousands of parallel ALUs, processing millions of bitwise boolean operations concurrently.",
+    "source": "ISRO Scientist (CS) 2023",
+    "exam": "ISRO Scientist (CS) 2023",
+    "category": "Query Processing & Hardware",
+    "difficulty": "Hard"
+  },
+  {
+    "id": "pyq_52",
+    "question": "In an ACID-compliant database using Multi-Version Concurrency Control (MVCC), how is a rolled-back row insert handled in the bitmap index?",
+    "options": [
+      "The transaction visibility bitmap marks the row offset as invisible/dead, ensuring subsequent reader queries filter out the aborted row.",
+      "The entire database is restored from yesterday's cold tape backup.",
+      "The rolled-back row remains visible to all subsequent queries indefinitely.",
+      "The database halts all query execution and restarts the storage engine."
+    ],
+    "correctAnswerIndex": 0,
+    "explanation": "In MVCC architectures, transaction visibility bitmaps track whether a row's creating transaction committed. If aborted, the row is marked invisible in the visibility bitmask, preventing dirty reads without needing an expensive index rewrite.",
+    "source": "NIELIT Scientist B 2024",
+    "exam": "NIELIT Scientist B 2024",
+    "category": "Concurrency & OLTP Lock Contention",
+    "difficulty": "Hard"
+  }
+]

@@ -194,7 +194,7 @@ export function QuizApp() {
               >
                 <div className="font-bold mb-1">Competitive Exams (PYQs)</div>
                 <div className="text-xs opacity-70 leading-relaxed">
-                  Hand-picked Previous Year Questions from GATE, ISRO, and UGC NET exams.
+                  50+ authentic Previous Year Questions from GATE, ISRO, UGC NET, BARC, and NIELIT.
                 </div>
               </button>
             </div>
@@ -205,7 +205,7 @@ export function QuizApp() {
               <label className="block text-sm font-medium text-neutral-400 mb-2">Number of Questions</label>
               <input 
                 type="range" 
-                min="3" max={source === 'pyq' ? PYQ_BANK.length : 15} 
+                min="3" max={source === 'pyq' ? Math.min(30, PYQ_BANK.length) : 15} 
                 value={numQuestions} 
                 onChange={(e) => setNumQuestions(parseInt(e.target.value))}
                 className="w-full accent-blue-500"

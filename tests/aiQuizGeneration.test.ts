@@ -127,4 +127,29 @@ describe('AI Quiz Generation & Difficulty-Based Novelty Tests', () => {
       assert.ok(!seenIds.includes(q.id), `ID ${q.id} was seen in previous batch but returned again!`);
     }
   });
+
+  it('verifies at least 50 authentic competitive exam MCQ questions on bitmap index in JSON', () => {
+    const { PYQ_BANK } = require('../src/lib/quiz/pyqBank');
+    assert.ok(PYQ_BANK.length >= 50, `Expected at least 50 competitive exam questions, got ${PYQ_BANK.length}`);
+
+    for (let i = 0; i < PYQ_BANK.length; i++) {
+      const q = PYQ_BANK[i];
+      assert.ok(q.id, `Question at index ${i} must have an ID`);
+      assert.ok(q.question && q.question.length > 20, `Question ${q.id} must have substantive text`);
+      assert.equal(q.options.length, 4, `Question ${q.id} must have exactly 4 options`);
+      assert.ok(
+        q.correctAnswerIndex >= 0 && q.correctAnswerIndex < 4,
+        `Question ${q.id} must have valid correctAnswerIndex (0..3)`
+      );
+      assert.ok(q.explanation && q.explanation.length > 15, `Question ${q.id} must have explanation`);
+      assert.ok(q.source && q.source.length > 3, `Question ${q.id} must have exam source`);
+      // Verify question is strictly related to bitmap index concepts
+      const text = (q.question + ' ' + q.explanation + ' ' + q.options.join(' ')).toLowerCase();
+      assert.ok(
+        text.includes('bitmap') || text.includes('bit') || text.includes('cardinality') || text.includes('roaring'),
+        `Question ${q.id} must be directly related to bitmap indexing`
+      );
+    }
+  });
 });
+
