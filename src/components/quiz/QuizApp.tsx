@@ -29,9 +29,19 @@ export function QuizApp() {
   const startQuiz = async () => {
     setErrorMsg('');
     if (source === 'pyq') {
-      // Shuffle and pick from competitive exams bank
-      const shuffled = [...PYQ_BANK].sort(() => 0.5 - Math.random());
+      // Pick non-repeating questions from the 52-question competitive exam pool
+      const excludeSet = new Set(seenQuestionIds);
+      let eligible = PYQ_BANK.filter(q => !excludeSet.has(q.id));
+      if (eligible.length < numQuestions) {
+        // If we've seen almost all questions, reset tracking so user can practice again
+        eligible = [...PYQ_BANK];
+      }
+      const shuffled = [...eligible].sort(() => 0.5 - Math.random());
       const selected = shuffled.slice(0, Math.min(numQuestions, shuffled.length));
+      
+      const newIds = selected.map(q => q.id);
+      setSeenQuestionIds(prev => Array.from(new Set([...prev, ...newIds])));
+
       setQuestions(selected);
       setCurrentIndex(0);
       setScore(0);
@@ -231,7 +241,7 @@ export function QuizApp() {
             </div>
           </div>
 
-          {source === 'ai' && (
+          {source === 'ai' ? (
             <div className="p-3.5 bg-neutral-950/60 rounded-lg border border-neutral-800">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${difficultyDetails[difficulty]?.badge}`}>
@@ -247,13 +257,27 @@ export function QuizApp() {
                 {difficultyDetails[difficulty]?.desc}
               </p>
             </div>
+          ) : (
+            <div className="p-3.5 bg-neutral-950/60 rounded-lg border border-neutral-800">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                  COMPETITIVE EXAMS BANK (52 QUESTIONS)
+                </span>
+                <span className="text-xs text-neutral-400 font-mono">
+                  {seenQuestionIds.length > 0 ? `${seenQuestionIds.length}/52 explored` : '52 available in pool'}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Authentic previous year exam questions from GATE CS/IT (18), ISRO Scientist (10), UGC NET (10), BARC (8), and NIELIT (6) covering bitmap index theory, storage calculations, WAH/Roaring compression, and engine internals.
+              </p>
+            </div>
           )}
 
           <button 
             onClick={startQuiz}
             className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-blue-500/20"
           >
-            Generate & Start Quiz <ArrowRight className="w-5 h-5" />
+            {source === 'pyq' ? 'Start PYQ Quiz' : 'Generate & Start Quiz'} <ArrowRight className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -374,12 +398,19 @@ export function QuizApp() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-        {source === 'ai' && (
+        {source === 'ai' ? (
           <button 
             onClick={startQuiz}
             className="w-full sm:w-auto py-3 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-emerald-500/20"
           >
             <Sparkles className="w-4 h-4" /> Generate New Questions
+          </button>
+        ) : (
+          <button 
+            onClick={startQuiz}
+            className="w-full sm:w-auto py-3 px-6 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-blue-500/20"
+          >
+            <RotateCcw className="w-4 h-4" /> Next Set of PYQ Questions
           </button>
         )}
         <button 
