@@ -77,8 +77,8 @@ The application is deployed on Vercel with high-performance edge caching and cli
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/rajan-1357/bitmapindex.git
-   cd bitmapindex
+   git clone https://github.com/prathishrajan3/bitmap_index_visualizer.git
+   cd bitmap_index_visualizer
    ```
 
 2. **Install dependencies:**
