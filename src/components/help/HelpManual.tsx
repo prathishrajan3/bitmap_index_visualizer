@@ -65,7 +65,7 @@ export function HelpManual() {
         <ul className="space-y-3">
           <li className="flex items-start gap-3 text-sm text-neutral-400">
             <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span><strong>Generate with AI:</strong> Give the AI a custom context (e.g., "Hospital Patient Records") and it will intelligently populate the column names and data.</span>
+            <span><strong>Generate Dataset:</strong> Intelligently populates realistic domain column names and categorical data tailored for bitmap indexing.</span>
           </li>
           <li className="flex items-start gap-3 text-sm text-neutral-400">
             <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center text-white font-bold shrink-0 text-xs">R</div>

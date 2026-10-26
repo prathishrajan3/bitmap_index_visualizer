@@ -110,9 +110,8 @@ export default function LaboratoryDashboard() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isGeneratingDataset, setIsGeneratingDataset] = useState(false);
   const [isAddingColumn, setIsAddingColumn] = useState(false);
-  const [aiDatasetPrompt, setAiDatasetPrompt] = useState('');
 
   const handleAddColumnWithAi = async () => {
     setIsAddingColumn(true);
@@ -133,7 +132,7 @@ export default function LaboratoryDashboard() {
 
       // Instant client-side generation (0ms network latency, 0 Vercel serverless CPU/invocations)
       const data = generateFallbackThemedDataset(
-        aiDatasetPrompt.trim() ? `${aiDatasetPrompt.trim()} - add a new column` : 'add a relevant domain column',
+        'add a relevant domain column',
         rowCount,
         updatedCols
       );
@@ -173,13 +172,19 @@ export default function LaboratoryDashboard() {
     }
   };
 
-  const handleAiGenerateDataset = async () => {
-    setIsAiGenerating(true);
+  const handleGenerateDataset = async () => {
+    setIsGeneratingDataset(true);
     setExplanation("Generating pedagogically optimized dataset...");
     try {
       await new Promise(r => setTimeout(r, 180));
-      // Instant client-side generation (0ms network latency, 0 Vercel serverless CPU/invocations)
-      const data = generateFallbackThemedDataset(aiDatasetPrompt, rowCount, schema.columns);
+      const domains = ['University Campus', 'Hospital Patient Records', 'Airport Flight Operations', 'E-Commerce Orders', 'Banking & Credit Analytics'];
+      const currentDomain = schema.domain || '';
+      const otherDomains = domains.filter(d => !currentDomain.toLowerCase().includes(d.toLowerCase().split(' ')[0]));
+      const chosenDomain = otherDomains.length > 0 
+        ? otherDomains[Math.floor(Math.random() * otherDomains.length)] 
+        : domains[Math.floor(Math.random() * domains.length)];
+
+      const data = generateFallbackThemedDataset(chosenDomain, rowCount);
 
       if (data.dataset && data.dataset.length > 0) {
         skipNextGenerate.current = true;
@@ -202,14 +207,14 @@ export default function LaboratoryDashboard() {
               };
             });
 
-        loadExternalDataset(data.dataset, columns, data.domain || aiDatasetPrompt.trim() || undefined, 'ai');
+        loadExternalDataset(data.dataset, columns, data.domain, 'ai');
         const colNames = columns.map((c: any) => c.name).join(', ');
-        setExplanation(`Generated dataset for "${data.domain || aiDatasetPrompt.trim() || 'Custom Theme'}" with columns: ${colNames}!`);
+        setExplanation(`Generated dataset for "${data.domain}" with columns: ${colNames}!`);
       }
     } catch (e) {
       setExplanation("Failed to generate dataset.");
     } finally {
-      setIsAiGenerating(false);
+      setIsGeneratingDataset(false);
     }
   };
 
@@ -374,7 +379,7 @@ export default function LaboratoryDashboard() {
                 ))}
                 <button 
                   onClick={handleAddColumnWithAi}
-                  disabled={isAddingColumn || isAiGenerating}
+                  disabled={isAddingColumn || isGeneratingDataset}
                   className="w-full border border-dashed border-neutral-700 hover:border-blue-500 text-neutral-500 hover:text-blue-400 py-2 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                   <Plus className="w-3 h-3" /> {isAddingColumn ? 'Naming & Generating Column...' : 'Add Column'}
@@ -384,19 +389,12 @@ export default function LaboratoryDashboard() {
           </div>
           
           <div className="p-4 pt-3 border-t border-neutral-800 flex flex-col gap-2 shrink-0 bg-neutral-900/40">
-            <input 
-              type="text"
-              placeholder="Optional: custom context for AI..."
-              value={aiDatasetPrompt}
-              onChange={e => setAiDatasetPrompt(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500 transition-colors"
-            />
             <button 
-              onClick={handleAiGenerateDataset}
-              disabled={isAiGenerating}
+              onClick={handleGenerateDataset}
+              disabled={isGeneratingDataset}
               className="w-full bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 hover:bg-emerald-600/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" /> {isAiGenerating ? 'Generating...' : 'Generate with AI'}
+              <Sparkles className="w-4 h-4" /> {isGeneratingDataset ? 'Generating...' : 'Generate Dataset'}
             </button>
             <button 
               onClick={generateData}
