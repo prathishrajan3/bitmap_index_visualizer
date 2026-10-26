@@ -4,62 +4,69 @@ import { useMemo, useState } from 'react';
 import { useCityStore } from '@/store/useCityStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DISTRICTS, DISTRICT_PATHS } from '@/lib/city/cityGenerator';
-import { HelpCircle, Info } from 'lucide-react';
+import { HelpCircle, Info, Sparkles, X } from 'lucide-react';
 
 const SVG_VIEWBOX_WIDTH = 160;
 const SVG_VIEWBOX_HEIGHT = 130;
 
 export default function CityMap() {
-  const { dataset, queryResultEntityIds, activeQuery, heatmapMode, timeOfDay, weather, activeScenario } = useCityStore();
+  const { 
+    dataset, 
+    queryResultEntityIds, 
+    activeQuery, 
+    heatmapMode, 
+    timeOfDay, 
+    weather, 
+    activeScenario,
+    setActiveQuery,
+    setLastBenchmarkResult
+  } = useCityStore();
+
   const [hoveredDistrict, setHoveredDistrict] = useState<string | null>(null);
   const [hoveredEntity, setHoveredEntity] = useState<any | null>(null);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
 
-  const renderedEntities = useMemo(() => {
-    return dataset.map(entity => {
+  const { backgroundEntities, matchingEntities } = useMemo(() => {
+    const bg: any[] = [];
+    const match: any[] = [];
+
+    dataset.forEach(entity => {
       const isMatch = activeQuery ? queryResultEntityIds.has(entity.id) : false;
-      const isNormal = !activeQuery || !isMatch;
-      
-      let fillColor = '#10b981'; // emerald
+
+      let baseFillColor = '#10b981'; // emerald default
       if (heatmapMode === 'Traffic') {
-        if (entity.trafficLevel === 'Severe') fillColor = '#ef4444';
-        else if (entity.trafficLevel === 'Heavy') fillColor = '#f97316';
-        else if (entity.trafficLevel === 'Medium') fillColor = '#eab308';
-        else fillColor = '#34d399';
+        if (entity.trafficLevel === 'Severe') baseFillColor = '#ef4444';
+        else if (entity.trafficLevel === 'Heavy') baseFillColor = '#f97316';
+        else if (entity.trafficLevel === 'Medium') baseFillColor = '#eab308';
+        else baseFillColor = '#34d399';
       } else if (heatmapMode === 'Emergency' || heatmapMode === 'Risk') {
-        if (entity.emergencyPriority === 'Critical' || entity.riskLevel === 'Critical') fillColor = '#ef4444';
-        else if (entity.emergencyPriority === 'High' || entity.riskLevel === 'High') fillColor = '#f97316';
-        else if (entity.emergencyPriority === 'Medium') fillColor = '#eab308';
+        if (entity.emergencyPriority === 'Critical' || entity.riskLevel === 'Critical') baseFillColor = '#ef4444';
+        else if (entity.emergencyPriority === 'High' || entity.riskLevel === 'High') baseFillColor = '#f97316';
+        else if (entity.emergencyPriority === 'Medium') baseFillColor = '#eab308';
       } else if (heatmapMode === 'Pollution') {
-        if (entity.airQuality === 'Hazardous') fillColor = '#7e22ce'; 
-        else if (entity.airQuality === 'Poor') fillColor = '#ef4444';
-        else if (entity.airQuality === 'Moderate') fillColor = '#eab308';
+        if (entity.airQuality === 'Hazardous') baseFillColor = '#7e22ce'; 
+        else if (entity.airQuality === 'Poor') baseFillColor = '#ef4444';
+        else if (entity.airQuality === 'Moderate') baseFillColor = '#eab308';
       } else {
-        if (entity.entityType === 'Hospital') fillColor = '#ef4444';
-        else if (entity.entityType === 'Intersection') fillColor = '#3b82f6';
-        else if (entity.entityType === 'PowerSubstation') fillColor = '#eab308';
+        if (entity.entityType === 'Hospital') baseFillColor = '#ef4444';
+        else if (entity.entityType === 'Intersection') baseFillColor = '#3b82f6';
+        else if (entity.entityType === 'PowerSubstation') baseFillColor = '#eab308';
       }
 
-      // Visual Hierarchy Rules
-      const opacity = activeQuery ? (isMatch ? 1 : 0.1) : 0.3;
-      const r = activeQuery && isMatch ? 1.2 : 0.4;
-      const className = isMatch ? "transition-all duration-300 drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" : "transition-all duration-500";
-
-      return (
-        <circle
-          key={entity.id}
-          cx={entity.x}
-          cy={entity.y}
-          r={r}
-          fill={fillColor}
-          opacity={opacity}
-          className={`${className} cursor-crosshair`}
-          onMouseEnter={() => setHoveredEntity(entity)}
-          onMouseLeave={() => setHoveredEntity(null)}
-        />
-      );
+      if (isMatch) {
+        match.push({ entity, baseFillColor });
+      } else {
+        bg.push({ entity, baseFillColor });
+      }
     });
+
+    return { backgroundEntities: bg, matchingEntities: match };
   }, [dataset, activeQuery, queryResultEntityIds, heatmapMode]);
+
+  const handleClearQuery = () => {
+    setActiveQuery(null, new Set());
+    setLastBenchmarkResult(null);
+  };
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-8 overflow-hidden font-sans">
@@ -79,6 +86,39 @@ export default function CityMap() {
         </div>
       </div>
 
+      {/* TOP QUERY RESULTS HUD BANNER */}
+      <AnimatePresence>
+        {activeQuery && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-20 bg-[#0d0d0f]/95 backdrop-blur-md border border-emerald-500/50 rounded-xl px-5 py-2.5 shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-4"
+          >
+            <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_12px_#34d399] animate-pulse" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {matchingEntities.length} Matching Entities Highlighted
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 font-semibold">
+                  BITMAP RESULT
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-400 font-mono">
+                Showing all matching records in real-time
+              </div>
+            </div>
+            <button
+              onClick={handleClearQuery}
+              className="text-xs text-neutral-400 hover:text-white bg-neutral-800/80 hover:bg-neutral-700 px-3 py-1 rounded-md border border-neutral-700 transition-colors flex items-center gap-1"
+            >
+              <X className="w-3 h-3" /> Clear
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* MAP LEGEND */}
       <div className="absolute bottom-6 left-6 z-10 bg-[#0d0d0f]/90 backdrop-blur-md border border-neutral-800 rounded-lg p-3 shadow-xl">
         <h3 className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold mb-2">MAP LEGEND</h3>
@@ -88,8 +128,8 @@ export default function CityMap() {
             <span>Normal Entity</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)]"></div>
-            <span className="text-emerald-400 font-medium">Query Match</span>
+            <div className="w-3 h-3 rounded-full bg-[#00ffcc] shadow-[0_0_8px_#00ffcc] border border-white"></div>
+            <span className="text-emerald-300 font-bold">Query Match ({activeQuery ? matchingEntities.length : 0})</span>
           </div>
           <div className="flex items-center gap-2 mt-1 pt-1 border-t border-neutral-800">
             <div className="w-2 h-2 rounded-full bg-red-500"></div>
@@ -134,7 +174,7 @@ export default function CityMap() {
               <div className="text-neutral-300 truncate text-right">{hoveredEntity.district}</div>
               
               <div className="text-neutral-500">Traffic</div>
-              <div className={`text-right ${hoveredEntity.trafficLevel === 'Severe' ? 'text-red-400' : 'text-neutral-300'}`}>{hoveredEntity.trafficLevel}</div>
+              <div className={`text-right ${hoveredEntity.trafficLevel === 'Severe' ? 'text-red-400 font-bold' : 'text-neutral-300'}`}>{hoveredEntity.trafficLevel}</div>
               
               <div className="text-neutral-500">Air Quality</div>
               <div className={`text-right ${hoveredEntity.airQuality === 'Hazardous' || hoveredEntity.airQuality === 'Poor' ? 'text-amber-400' : 'text-neutral-300'}`}>{hoveredEntity.airQuality}</div>
@@ -164,11 +204,11 @@ export default function CityMap() {
                 NOVA CITY simulates a smart city using 2,000 active entities. It demonstrates how Bitmap Indexes process complex analytical queries instantly.
               </p>
               <ol className="flex flex-col gap-3 text-xs text-neutral-300 list-decimal pl-5">
-                <li><strong className="text-white">Ask a question</strong> in natural language in the right sidebar.</li>
-                <li><strong className="text-white">AI converts it</strong> into structured Boolean conditions.</li>
-                <li><strong className="text-white">Bitmap Indexes</strong> retrieve matching data using fast bitwise vector math.</li>
-                <li><strong className="text-white">Matching entities</strong> are instantly highlighted on this map.</li>
-                <li><strong className="text-white">Performance metrics</strong> show how much faster Bitmap is compared to traditional Table Scans.</li>
+                <li><strong className="text-white">Ask a question</strong> or click Generate Smart Query to pick from a pool of 100 queries.</li>
+                <li><strong className="text-white">Click Analyze City</strong> to evaluate the query using bitwise vector operations.</li>
+                <li><strong className="text-white">Bitmap Indexes</strong> retrieve matching data in sub-millisecond execution times.</li>
+                <li><strong className="text-white">Matching entities</strong> are prominently highlighted in radiant neon cyan on the map.</li>
+                <li><strong className="text-white">Performance metrics</strong> show the speedup compared to traditional Table Scans.</li>
               </ol>
               <button 
                 onClick={() => setShowHowItWorks(false)}
@@ -228,26 +268,57 @@ export default function CityMap() {
             })}
           </g>
 
-          {/* Entities Layer */}
-          <g className="entities">
-            {renderedEntities}
+          {/* Layer 1: Background Non-Matching Entities */}
+          <g className="background-entities">
+            {backgroundEntities.map(({ entity, baseFillColor }) => (
+              <circle
+                key={entity.id}
+                cx={entity.x}
+                cy={entity.y}
+                r={activeQuery ? 0.35 : 0.4}
+                fill={baseFillColor}
+                opacity={activeQuery ? 0.08 : 0.3}
+                className="transition-all duration-300 cursor-crosshair"
+                onMouseEnter={() => setHoveredEntity(entity)}
+                onMouseLeave={() => setHoveredEntity(null)}
+              />
+            ))}
           </g>
 
-          {/* Highlight pulses for matching entities */}
+          {/* Layer 2: Matching Entities Foreground Layer (Highlighted with bright glow) */}
+          <g className="matching-entities">
+            {matchingEntities.map(({ entity }) => (
+              <circle
+                key={entity.id}
+                cx={entity.x}
+                cy={entity.y}
+                r={2.2}
+                fill="#00ffcc"
+                stroke="#ffffff"
+                strokeWidth="0.4"
+                opacity={1}
+                className="transition-all duration-300 drop-shadow-[0_0_8px_rgba(0,255,204,0.9)] cursor-pointer"
+                onMouseEnter={() => setHoveredEntity(entity)}
+                onMouseLeave={() => setHoveredEntity(null)}
+              />
+            ))}
+          </g>
+
+          {/* Layer 3: Highlight pulses for matching entities */}
           {activeQuery && (
             <g className="pulses pointer-events-none">
-              {dataset.filter(e => queryResultEntityIds.has(e.id)).slice(0, 30).map(entity => (
+              {matchingEntities.slice(0, 40).map(({ entity }) => (
                 <motion.circle
                   key={`pulse-${entity.id}`}
                   cx={entity.x}
                   cy={entity.y}
-                  r={1}
+                  r={2.2}
                   fill="none"
-                  stroke="#34d399"
-                  strokeWidth="0.3"
-                  initial={{ r: 1.2, opacity: 0.8 }}
-                  animate={{ r: 6, opacity: 0 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                  stroke="#00ffcc"
+                  strokeWidth="0.4"
+                  initial={{ r: 2.2, opacity: 0.9 }}
+                  animate={{ r: 7.5, opacity: 0 }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
                 />
               ))}
             </g>

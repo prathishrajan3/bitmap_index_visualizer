@@ -7,6 +7,7 @@ import { executeCityQuery, parseAICityQuery, CityExecutionResult } from '@/lib/c
 import { runRepeatedCityBenchmark, CityBenchmarkStatistics } from '@/lib/city/cityStatistics';
 import { PRESET_QUERIES } from '@/lib/city/cityScenarios';
 import { INDEXED_CITY_FIELDS } from '@/lib/city/cityBitmapEngine';
+import { getRandomSmartQuery, resolveCityQueryAST, SMART_CITY_QUERY_POOL } from '@/lib/city/smartQueryPool';
 import BitmapQueryVisualizer from './BitmapQueryVisualizer';
 import CityTooltip from './ui/CityTooltip';
 import { CityIssueScanner } from './CityIssueScanner';
@@ -24,6 +25,8 @@ export default function CitySidebar() {
   const [executionStage, setExecutionStage] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   
+  const [smartQueryMeta, setSmartQueryMeta] = useState<{ id: string; category: string } | null>(null);
+  
   const [activeTab, setActiveTab] = useState<SidebarTab>('Performance Lab');
 
   const handleExecutePreset = (presetName: string) => {
@@ -32,42 +35,14 @@ export default function CitySidebar() {
     executeAST(ast);
   };
 
-  const handleGenerateSmartQuery = async () => {
+  const handleGenerateSmartQuery = () => {
     setIsGeneratingQuery(true);
     setError(null);
     try {
-      // To GUARANTEE matches, we must pick an actual combination that exists in the dataset.
-      // We will pick a random entity from the dataset, and extract 2 or 3 of its attributes.
-      const randomEntity = dataset[Math.floor(Math.random() * dataset.length)];
-      
-      const possibleAttributes = [
-        { key: 'district', value: randomEntity.district },
-        { key: 'entityType', value: randomEntity.entityType },
-        { key: 'trafficLevel', value: randomEntity.trafficLevel },
-        { key: 'riskLevel', value: randomEntity.riskLevel },
-      ];
-      
-      // Shuffle and pick 2 or 3 attributes to form a guaranteed query
-      const shuffledAttributes = possibleAttributes.sort(() => 0.5 - Math.random());
-      const numAttributesToPick = Math.random() > 0.5 ? 2 : 3;
-      const selectedAttributes = shuffledAttributes.slice(0, numAttributesToPick);
-
-      const guaranteedCombination: Record<string, string> = {};
-      selectedAttributes.forEach(attr => {
-        guaranteedCombination[attr.key] = attr.value as string;
-      });
-
-      const response = await fetch('/api/suggest-city-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summary: guaranteedCombination })
-      });
-
-      if (!response.ok) throw new Error('Failed to generate query');
-      
-      const data = await response.json();
-      setNlQuery(data.query || '');
-      
+      // Pick a random query from the 100-query pool
+      const selected = getRandomSmartQuery(nlQuery);
+      setNlQuery(selected.text);
+      setSmartQueryMeta({ id: selected.id, category: selected.category });
     } catch (err: any) {
       console.error(err);
       setError("Failed to generate smart query.");
@@ -85,42 +60,20 @@ export default function CitySidebar() {
     setExecutionStage('Understanding question...');
 
     try {
-      await delay(400); // small delay to make the first state visible
-      setExecutionStage('Building Bitmap query...');
+      await delay(250);
+      setExecutionStage('Resolving Bitmap query...');
       
-      // Extract unique values to force the LLM to use exact enums (e.g. "Road" instead of "roads")
-      const allowedValues: Record<string, string[]> = {};
-      INDEXED_CITY_FIELDS.forEach(col => {
-        const unique = new Set(dataset.map((d: any) => String(d[col])));
-        allowedValues[col] = Array.from(unique);
-      });
-
-      const response = await fetch('/api/generate-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: nlQuery, 
-          domain: 'city',
-          mode: 'city',
-          allowedColumns: INDEXED_CITY_FIELDS,
-          allowedValues
-        }),
-      });
-
-      if (!response.ok) throw new Error('AI Engine failed to generate query');
-
-      const data = await response.json();
-      const validFields = new Set(INDEXED_CITY_FIELDS as string[]);
-      const ast = parseAICityQuery(data.query || data, validFields);
+      // Fast guaranteed semantic AST resolution from 100-query pool or parser
+      const ast = resolveCityQueryAST(nlQuery);
       
-      setExecutionStage('Executing...');
-      await delay(300); // small delay for visual feedback
+      setExecutionStage('Executing bitwise query...');
+      await delay(150);
 
       executeAST(ast);
 
     } catch (err: any) {
       console.error(err);
-      setError("I COULDN'T INTERPRET THAT QUERY. Try: 'Find severe traffic areas'");
+      setError("I couldn't interpret that query. Try: 'Find severe traffic in Central Business District'");
     } finally {
       setIsExecuting(false);
       setExecutionStage('');
@@ -150,6 +103,7 @@ export default function CitySidebar() {
     setActiveQuery(null, new Set());
     setLastBenchmarkResult(null);
     setNlQuery('');
+    setSmartQueryMeta(null);
     setError(null);
   };
 
@@ -210,6 +164,15 @@ export default function CitySidebar() {
                 }
               }}
             />
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono px-0.5">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              POOL: 100 SMART QUERIES
+            </span>
+            {smartQueryMeta && (
+              <span className="text-emerald-400/90 font-semibold truncate max-w-[170px]">{smartQueryMeta.category}</span>
+            )}
           </div>
           
           <button 

@@ -1,66 +1,71 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "dummy_key",
-});
+import { resolveCityQueryAST } from '@/lib/city/smartQueryPool';
 
 export async function POST(req: Request) {
+  let prompt = '';
+  let mode = '';
+
   try {
     const body = await req.json();
-
-    if (!process.env.OPENAI_API_KEY) {
-      if (body.mode === 'city') {
-        return NextResponse.json({ 
-          query: { type: 'predicate', column: 'trafficLevel', operator: '=', value: 'Severe' }
-        });
-      }
-      return NextResponse.json({ 
-        query: "SELECT * FROM DatasetRow;" // Fallback if no API key
-      });
-    }
-
-    const { schemaContext, prompt, datasetSample, mode, allowedColumns, allowedValues } = body;
+    prompt = body.prompt || '';
+    mode = body.mode || '';
 
     if (mode === 'city') {
-      const userMessage = `You are an AI that translates natural language queries into a strict JSON AST for a Smart City Digital Twin.
-Allowed Columns and their Exact Expected Values: ${JSON.stringify(allowedValues)}
+      const apiKey = process.env.OPENAI_API_KEY;
+
+      if (apiKey && apiKey.trim() !== '' && !apiKey.includes('dummy')) {
+        try {
+          const openai = new OpenAI({ apiKey });
+          const { allowedValues } = body;
+          const userMessage = `You are an AI that translates natural language queries into a strict JSON AST for a Smart City Digital Twin.
+Allowed Columns and their Exact Expected Values: ${JSON.stringify(allowedValues || {})}
 Operators for logical: AND, OR, NOT.
 Operators for predicate: =, !=
 Predicate Format: { "column": "...", "operator": "=", "value": "..." }
 Logical Format: { "operator": "AND", "conditions": [...] }
-You MUST output ONLY valid JSON. Do not use markdown blocks, backticks, or conversational text.
-CRITICAL: When generating a predicate, the "value" MUST EXACTLY MATCH one of the allowed strings provided above (case-sensitive). Do not guess values.
-
+Output ONLY valid JSON.
 User Query: "${prompt}"`;
 
-      const response = await openai.chat.completions.create({
-        model: 'gpt-5.4-mini-2026-03-17',
-        messages: [
-          { role: 'system', content: 'Output ONLY raw JSON.' },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.1,
-      });
+          const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'Output ONLY raw JSON.' },
+              { role: 'user', content: userMessage }
+            ],
+            temperature: 0.1,
+          });
 
-      let queryText = response.choices[0].message.content?.trim() || "{}";
-      // Strip markdown if the AI stubbornly included it
-      queryText = queryText.replace(/^```json/g, '').replace(/^```/g, '').replace(/```$/g, '').trim();
+          let queryText = response.choices[0].message.content?.trim() || "{}";
+          queryText = queryText.replace(/^```json/g, '').replace(/^```/g, '').replace(/```$/g, '').trim();
 
-      let ast;
-      try {
-        ast = JSON.parse(queryText);
-      } catch (e) {
-        throw new Error("Failed to parse JSON AST from AI response");
+          const parsedAst = JSON.parse(queryText);
+          if (parsedAst && (parsedAst.column || parsedAst.operator)) {
+            return NextResponse.json({ query: parsedAst });
+          }
+        } catch (openAiError) {
+          console.warn('OpenAI city query translation failed, using intelligent semantic AST resolver:', openAiError);
+        }
       }
-      return NextResponse.json({ query: ast });
+
+      // Zero-latency intelligent semantic AST resolver
+      const resolvedAst = resolveCityQueryAST(prompt);
+      return NextResponse.json({ query: resolvedAst });
     }
 
     // Default SQL Mode
+    const { schemaContext, datasetSample } = body;
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey || apiKey.trim() === '' || apiKey.includes('dummy')) {
+      return NextResponse.json({ query: "SELECT * FROM DatasetRow;" });
+    }
+
+    const openai = new OpenAI({ apiKey });
     let userMessage = `Here is the dataset schema context: ${schemaContext}.
 Here is a sample of the actual data: ${JSON.stringify(datasetSample)}.
 Please generate a valid SQL query for this dataset.
-IMPORTANT: You MUST use exact matching string values from the sample data in your WHERE clauses. Do NOT guess values. For example, if the data has 'CSE', do not query for 'Computer Science'.`;
+IMPORTANT: You MUST use exact matching string values from the sample data in your WHERE clauses.`;
     if (prompt) {
       userMessage += `\n\nThe user explicitly requested: "${prompt}".`;
     } else {
@@ -68,7 +73,7 @@ IMPORTANT: You MUST use exact matching string values from the sample data in you
     }
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-5.4-mini-2026-03-17',
+      model: 'gpt-4o-mini',
       messages: [
         { 
           role: 'system', 
@@ -83,11 +88,14 @@ IMPORTANT: You MUST use exact matching string values from the sample data in you
     });
 
     const query = response.choices[0].message.content?.trim() || "SELECT * FROM DatasetRow;";
-
     return NextResponse.json({ query });
 
   } catch (error) {
-    console.error("OpenAI API Error:", error);
-    return NextResponse.json({ query: "SELECT * FROM DatasetRow;" }, { status: 500 });
+    console.error("Generate Query Error:", error);
+    if (mode === 'city') {
+      const fallbackAst = resolveCityQueryAST(prompt);
+      return NextResponse.json({ query: fallbackAst });
+    }
+    return NextResponse.json({ query: "SELECT * FROM DatasetRow;" });
   }
 }
