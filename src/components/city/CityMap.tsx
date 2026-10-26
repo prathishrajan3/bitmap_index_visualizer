@@ -204,7 +204,7 @@ export default function CityMap() {
                 NOVA CITY simulates a smart city using 2,000 active entities. It demonstrates how Bitmap Indexes process complex analytical queries instantly.
               </p>
               <ol className="flex flex-col gap-3 text-xs text-neutral-300 list-decimal pl-5">
-                <li><strong className="text-white">Ask a question</strong> or click Generate Smart Query to pick from a pool of 100 queries.</li>
+                <li><strong className="text-white">Ask a question</strong> or click Generate Smart Query to explore instant analytical queries.</li>
                 <li><strong className="text-white">Click Analyze City</strong> to evaluate the query using bitwise vector operations.</li>
                 <li><strong className="text-white">Bitmap Indexes</strong> retrieve matching data in sub-millisecond execution times.</li>
                 <li><strong className="text-white">Matching entities</strong> are prominently highlighted in radiant neon cyan on the map.</li>

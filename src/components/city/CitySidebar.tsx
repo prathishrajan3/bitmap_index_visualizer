@@ -165,15 +165,6 @@ export default function CitySidebar() {
               }}
             />
           </div>
-          <div className="flex items-center justify-between text-[10px] text-neutral-500 font-mono px-0.5">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              POOL: 100 SMART QUERIES
-            </span>
-            {smartQueryMeta && (
-              <span className="text-emerald-400/90 font-semibold truncate max-w-[170px]">{smartQueryMeta.category}</span>
-            )}
-          </div>
           
           <button 
             onClick={handleExecuteNL}
