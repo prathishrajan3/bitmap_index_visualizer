@@ -5,7 +5,8 @@ import { Settings2, Database, Sparkles, Download, Upload, Shuffle, Blocks, Calcu
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLaboratoryStore } from '@/store/useLaboratoryStore';
 import { useLearningStore } from '@/store/useLearningStore';
-import { buildDatasetBitmapIndex, Bitmap } from '@/lib/bitmap';
+import { buildDatasetBitmapIndex, Bitmap, ColumnDefinition } from '@/lib/bitmap';
+import { generateFallbackThemedDataset } from '@/lib/dataset/themedDatasetGenerator';
 
 // Components
 import { BitmapMatrix } from '@/components/bitmap/BitmapMatrix';
@@ -115,8 +116,9 @@ export default function LaboratoryDashboard() {
 
   const handleAddColumnWithAi = async () => {
     setIsAddingColumn(true);
-    setExplanation("Adding column and asking AI to name it and generate domain-relevant data...");
+    setExplanation("Adding column and generating domain-relevant data...");
     try {
+      await new Promise(r => setTimeout(r, 120));
       const count = schema.columns.length + 1;
       const placeholderName = `Column ${count}`;
       const updatedCols = [
@@ -129,28 +131,27 @@ export default function LaboratoryDashboard() {
         }
       ];
 
-      const res = await fetch('/api/generate-dataset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rowCount,
-          schema: updatedCols,
-          prompt: aiDatasetPrompt.trim() ? `${aiDatasetPrompt.trim()} - add a new column` : 'add a relevant domain column',
-          seed: Math.random()
-        })
-      });
+      // Instant client-side generation (0ms network latency, 0 Vercel serverless CPU/invocations)
+      const data = generateFallbackThemedDataset(
+        aiDatasetPrompt.trim() ? `${aiDatasetPrompt.trim()} - add a new column` : 'add a relevant domain column',
+        rowCount,
+        updatedCols
+      );
 
-      const data = await res.json();
-      if (data.error) {
-        addColumnDef();
-        setExplanation(`Added column (Note: ${data.error})`);
-      } else if (data.dataset && data.dataset.length > 0) {
+      if (data.dataset && data.dataset.length > 0) {
         skipNextGenerate.current = true;
-        const columns = data.columns && data.columns.length > 0
-          ? data.columns
-          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string) => {
+        const columns: ColumnDefinition[] = data.columns && data.columns.length > 0
+          ? data.columns.map((c: any, idx: number) => ({
+              id: c.id || `col-${idx + 1}`,
+              name: c.name,
+              type: (c.type === 'number' || c.type === 'boolean' ? c.type : 'string') as 'string' | 'number' | 'boolean',
+              cardinality: c.cardinality || 3,
+              distribution: (c.distribution as any) || 'Uniform'
+            }))
+          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string, idx: number) => {
               const distinctVals = new Set(data.dataset.map((r: any) => r[name]));
               return {
+                id: `col-${idx + 1}`,
                 name,
                 type: 'string' as const,
                 cardinality: distinctVals.size,
@@ -160,7 +161,7 @@ export default function LaboratoryDashboard() {
 
         loadExternalDataset(data.dataset, columns, data.domain || undefined, 'ai');
         const colNames = columns.map((c: any) => c.name).join(', ');
-        setExplanation(`Added column and generated relevant AI dataset with columns: ${colNames}!`);
+        setExplanation(`Added column and generated domain-relevant dataset with columns: ${colNames}!`);
       } else {
         addColumnDef();
       }
@@ -174,41 +175,39 @@ export default function LaboratoryDashboard() {
 
   const handleAiGenerateDataset = async () => {
     setIsAiGenerating(true);
-    setExplanation("Asking AI to generate a pedagogically perfect dataset...");
+    setExplanation("Generating pedagogically optimized dataset...");
     try {
-      const res = await fetch('/api/generate-dataset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          rowCount, 
-          schema: schema.columns, 
-          prompt: aiDatasetPrompt,
-          seed: Math.random() // Send a random nonce to ensure the AI generates different data
-        })
-      });
-      const data = await res.json();
-      if (data.error) {
-        setExplanation(`Error: ${data.error}`);
-      } else if (data.dataset && data.dataset.length > 0) {
+      await new Promise(r => setTimeout(r, 180));
+      // Instant client-side generation (0ms network latency, 0 Vercel serverless CPU/invocations)
+      const data = generateFallbackThemedDataset(aiDatasetPrompt, rowCount, schema.columns);
+
+      if (data.dataset && data.dataset.length > 0) {
         skipNextGenerate.current = true;
-        const columns = data.columns && data.columns.length > 0
-          ? data.columns
-          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string) => {
+        const columns: ColumnDefinition[] = data.columns && data.columns.length > 0
+          ? data.columns.map((c: any, idx: number) => ({
+              id: c.id || `col-${idx + 1}`,
+              name: c.name,
+              type: (c.type === 'number' || c.type === 'boolean' ? c.type : 'string') as 'string' | 'number' | 'boolean',
+              cardinality: c.cardinality || 3,
+              distribution: (c.distribution as any) || 'Uniform'
+            }))
+          : Object.keys(data.dataset[0]).filter((k: string) => k !== 'id').map((name: string, idx: number) => {
               const distinctVals = new Set(data.dataset.map((r: any) => r[name]));
               return {
+                id: `col-${idx + 1}`,
                 name,
-                type: 'string',
+                type: 'string' as const,
                 cardinality: distinctVals.size,
-                distribution: 'Uniform'
+                distribution: 'Uniform' as const
               };
             });
 
         loadExternalDataset(data.dataset, columns, data.domain || aiDatasetPrompt.trim() || undefined, 'ai');
         const colNames = columns.map((c: any) => c.name).join(', ');
-        setExplanation(`AI generated dataset for "${data.domain || aiDatasetPrompt.trim() || 'Custom Theme'}" with columns: ${colNames}!`);
+        setExplanation(`Generated dataset for "${data.domain || aiDatasetPrompt.trim() || 'Custom Theme'}" with columns: ${colNames}!`);
       }
     } catch (e) {
-      setExplanation("Failed to contact the AI generator.");
+      setExplanation("Failed to generate dataset.");
     } finally {
       setIsAiGenerating(false);
     }

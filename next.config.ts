@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   // Strict React checks to prevent client memory leaks
   reactStrictMode: true,
 
+  // Treat Prisma as external to prevent large query engine binaries from bundling into serverless functions
+  serverExternalPackages: ['@prisma/client', 'prisma'],
+
   // Optimize static assets caching on Vercel Edge CDN to minimize Fast Origin Transfer
   async headers() {
     return [

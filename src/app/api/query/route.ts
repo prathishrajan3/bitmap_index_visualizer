@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
-let prismaInstance: PrismaClient | null = null;
-function getPrisma() {
+let prismaInstance: any = null;
+async function getPrisma() {
   if (!prismaInstance && process.env.DATABASE_URL) {
+    const { PrismaClient } = await import('@prisma/client');
     prismaInstance = new PrismaClient();
   }
   return prismaInstance;
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
 
     const { finalQuery, params } = buildCteQuery(query, dataset, schema);
 
-    const prisma = getPrisma();
+    const prisma = await getPrisma();
     if (!prisma) {
       return NextResponse.json({ error: "External database not configured" }, { status: 400 });
     }
