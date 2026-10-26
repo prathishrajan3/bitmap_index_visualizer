@@ -36,7 +36,7 @@ export function CompareLab({ sqlQuery, onNavigate }: CompareLabProps) {
         <GitCompare className="w-12 h-12 mb-4 opacity-50" />
         <h2 className="text-xl font-bold text-neutral-400 mb-2">No Comparison Data</h2>
         <p className="max-w-md">
-          Please ensure you have generated a dataset and executed a query with a WHERE clause in the Neon Query tab.
+          Please ensure you have generated a dataset and built your bitmap indexes.
         </p>
       </div>
     );

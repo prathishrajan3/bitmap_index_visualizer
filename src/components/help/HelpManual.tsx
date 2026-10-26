@@ -1,5 +1,5 @@
 import React from 'react';
-import { HelpCircle, Database, Settings2, Sparkles, Blocks, Calculator, Terminal, Table2, BookOpen, Brain, User } from 'lucide-react';
+import { HelpCircle, Database, Settings2, Sparkles, Blocks, Calculator, Table2, BookOpen, Brain, User } from 'lucide-react';
 
 export function HelpManual() {
   return (
@@ -116,13 +116,7 @@ export function HelpManual() {
             </div>
           </div>
 
-          <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
-            <Terminal className="w-6 h-6 text-orange-400 shrink-0" />
-            <div>
-              <h3 className="font-semibold text-neutral-200">Neon Query Tab</h3>
-              <p className="text-sm text-neutral-400">Write an SQL query or ask in natural language. The engine parses the query into an AST, translates it into bitwise vector math, and executes it in real-time.</p>
-            </div>
-          </div>
+
 
           <div className="border border-neutral-800 rounded p-4 flex gap-4 bg-neutral-900/50">
             <Brain className="w-6 h-6 text-pink-400 shrink-0" />
