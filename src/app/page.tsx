@@ -47,7 +47,6 @@ export default function LaboratoryDashboard() {
   const [activeRow, setActiveRow] = useState<number | null>(null);
   const [activeValue, setActiveValue] = useState<{col: string, val: string} | null>(null);
   const [explanation, setExplanation] = useState<string>("Configure your experiment and click Generate Data.");
-  const [aiLoading, setAiLoading] = useState(false);
 
   // Advanced Database State
   const [sqlQuery, setSqlQuery] = useState<string>("");
@@ -238,32 +237,7 @@ export default function LaboratoryDashboard() {
   };
 
 
-  const [tutorPrompt, setTutorPrompt] = useState('');
 
-  const askAi = async () => {
-    setAiLoading(true);
-    setExplanation("Thinking...");
-    try {
-      const res = await fetch('/api/ask-bitmap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          config: { rowCount, columns: schema.columns },
-          activeValue: activeValue?.val,
-          activeRow,
-          activeTab,
-          sqlQuery,
-          prompt: tutorPrompt
-        })
-      });
-      const data = await res.json();
-      setExplanation(data.explanation || "No explanation returned.");
-    } catch (e) {
-      setExplanation("Failed to connect to the AI Tutor. Please check your API keys.");
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   const generateAiQuery = async () => {
     setQueryExecuting(true);
@@ -868,38 +842,7 @@ export default function LaboratoryDashboard() {
           </div>
         </main>
 
-        {/* Right Sidebar: AI Tutor */}
-        <aside className="w-72 xl:w-80 border-l border-neutral-800 bg-neutral-900/30 p-4 sm:p-5 flex flex-col shrink-0 min-h-0 h-full">
-          <h2 className="text-xs sm:text-sm font-semibold text-neutral-400 uppercase tracking-wider mb-3 flex items-center gap-2 shrink-0">
-            <Sparkles className="w-4 h-4 text-amber-400" /> AI Tutor
-          </h2>
-          
-          <div className="flex-1 min-h-0 bg-neutral-950 border border-neutral-800 rounded-lg p-3.5 text-sm leading-relaxed text-neutral-300 relative overflow-y-auto whitespace-pre-wrap custom-scrollbar">
-            {aiLoading ? (
-              <div className="flex items-center gap-2 text-amber-500/70">
-                <span className="animate-pulse">Analyzing context...</span>
-              </div>
-            ) : (
-              <p>{explanation}</p>
-            )}
-          </div>
 
-          <div className="mt-3 shrink-0 flex flex-col gap-2">
-            <textarea
-              value={tutorPrompt}
-              onChange={e => setTutorPrompt(e.target.value)}
-              placeholder="Ask a specific question... (e.g. Teach me about cardinality)"
-              className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-xs sm:text-sm outline-none focus:border-amber-500/50 resize-none h-14 sm:h-16"
-            />
-            <button 
-              onClick={askAi}
-              disabled={aiLoading}
-              className="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-2 rounded-md transition-colors text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4" /> Explain This
-            </button>
-          </div>
-        </aside>
 
       </div>
     </div>
