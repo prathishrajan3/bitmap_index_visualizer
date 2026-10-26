@@ -1067,15 +1067,25 @@ export function generateDynamicAiQuiz(
   const normDiff = difficulty.toLowerCase();
   const excludeSet = new Set(excludeIds.map(id => String(id).trim()));
   
-  // Filter pool strictly by difficulty
-  const targetPool = AI_QUIZ_POOL.filter(q => {
+  // Filter pool by difficulty, or use full 60-question pool if 'All' or if count exceeds single tier
+  let targetPool = AI_QUIZ_POOL.filter(q => {
+    if (normDiff.includes('all') || normDiff.includes('comprehensive') || normDiff.includes('mixed')) return true;
     if (normDiff.includes('easy')) return q.difficulty === 'Easy';
     if (normDiff.includes('hard')) return q.difficulty === 'Hard';
     return q.difficulty === 'Medium';
   });
 
+  // If requested count is greater than this single tier, expand to the full 60-question pool
+  if (count > targetPool.length) {
+    targetPool = [...AI_QUIZ_POOL];
+  }
+
   // Filter out any questions already seen in this session
-  const freshEligible = targetPool.filter(q => !excludeSet.has(q.id));
+  let freshEligible = targetPool.filter(q => !excludeSet.has(q.id));
+  if (freshEligible.length < count) {
+    // If not enough unseen questions remain in this session, draw from full pool
+    freshEligible = [...targetPool];
+  }
 
   // Shuffle fresh candidates
   const shuffledPool = [...freshEligible].sort(() => Math.random() - 0.5);

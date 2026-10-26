@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.OPENAI_API_KEY;
 
-    if (apiKey && apiKey.trim() !== '' && !apiKey.includes('dummy')) {
+    if (apiKey && apiKey.trim() !== '' && !apiKey.includes('dummy') && reqNumQuestions <= 10) {
       try {
         const openai = new OpenAI({
           apiKey,
