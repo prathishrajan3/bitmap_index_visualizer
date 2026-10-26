@@ -68,7 +68,7 @@ export interface QuizRecord {
   percentage: number;
   difficulty: string;
   completedAt: string;
-  source?: 'pyq' | 'ai';
+  source?: 'pyq' | 'ai' | 'combined';
   correctCount?: number;
   incorrectCount?: number;
   status?: 'completed' | 'in_progress';
