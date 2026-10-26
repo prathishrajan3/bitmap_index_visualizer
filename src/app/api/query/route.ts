@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+let prismaInstance: PrismaClient | null = null;
+function getPrisma() {
+  if (!prismaInstance && process.env.DATABASE_URL) {
+    prismaInstance = new PrismaClient();
+  }
+  return prismaInstance;
+}
 
 export function inferPostgresType(colName: string, declaredType: string | undefined, dataset: any[]): string {
   const colKey = colName.toLowerCase();
@@ -136,6 +142,11 @@ export async function POST(req: Request) {
     }
 
     const { finalQuery, params } = buildCteQuery(query, dataset, schema);
+
+    const prisma = getPrisma();
+    if (!prisma) {
+      return NextResponse.json({ error: "External database not configured" }, { status: 400 });
+    }
 
     const startTime = performance.now();
     // Execute the raw query

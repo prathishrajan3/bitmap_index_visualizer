@@ -87,52 +87,22 @@ export function QuizApp() {
       setShowExplanation(false);
       setState('playing');
     } else {
-      // Fetch fresh AI questions tailored to difficulty and avoiding seen questions
-      setState('loading');
-      try {
-        const nonce = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const res = await fetch('/api/generate-quiz', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            numQuestions, 
-            difficulty,
-            excludeIds: seenQuestionIds,
-            nonce
-          })
-        });
+      // Instant client-side AI quiz generation from our 60-question pool
+      // Zero serverless function invocations on Vercel, zero latency, zero CPU usage
+      const freshQuestions = generateDynamicAiQuiz(numQuestions, difficulty, seenQuestionIds);
+      if (freshQuestions && freshQuestions.length > 0) {
+        const newIds = freshQuestions.map(q => q.id);
+        setSeenQuestionIds(prev => Array.from(new Set([...prev, ...newIds])));
         
-        const data = await res.json();
-        if (data.questions && data.questions.length > 0) {
-          const newIds = data.questions.map((q: Question) => q.id);
-          setSeenQuestionIds(prev => Array.from(new Set([...prev, ...newIds])));
-          
-          setQuestions(data.questions);
-          setCurrentIndex(0);
-          setScore(0);
-          setSelectedOption(null);
-          setShowExplanation(false);
-          setState('playing');
-        } else {
-          throw new Error("No questions returned");
-        }
-      } catch (err) {
-        console.warn('Network quiz fetch failed, seamlessly generating new local dynamic questions:', err);
-        const fallback = generateDynamicAiQuiz(numQuestions, difficulty, seenQuestionIds);
-        if (fallback && fallback.length > 0) {
-          const newIds = fallback.map(q => q.id);
-          setSeenQuestionIds(prev => Array.from(new Set([...prev, ...newIds])));
-          
-          setQuestions(fallback);
-          setCurrentIndex(0);
-          setScore(0);
-          setSelectedOption(null);
-          setShowExplanation(false);
-          setState('playing');
-        } else {
-          setErrorMsg('Failed to generate AI questions. Try again or switch to PYQs.');
-          setState('setup');
-        }
+        setQuestions(freshQuestions);
+        setCurrentIndex(0);
+        setScore(0);
+        setSelectedOption(null);
+        setShowExplanation(false);
+        setState('playing');
+      } else {
+        setErrorMsg('Failed to generate AI questions. Try switching difficulty or practicing PYQs.');
+        setState('setup');
       }
     }
   };

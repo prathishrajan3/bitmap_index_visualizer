@@ -76,19 +76,6 @@ export default function LaboratoryDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowCount, seed]);
 
-  // Background Ping to keep Neon Database Active
-  useEffect(() => {
-    const pingDb = async () => {
-      try {
-        await fetch('/api/db-ping');
-      } catch (e) {
-        console.error("Failed to ping DB.");
-      }
-    };
-    pingDb(); // Initial ping
-    const interval = setInterval(pingDb, 180000); // Every 3 minutes
-    return () => clearInterval(interval);
-  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
